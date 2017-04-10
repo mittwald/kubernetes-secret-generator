@@ -32,4 +32,4 @@ data:
 -   Regenerate all automatically generated passwords:
 
     ```
-    $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/autogenerate-generated-at-
+    $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=true
