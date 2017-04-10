@@ -1,0 +1,5 @@
+package: github.com/mittwald/kubernetes-secret-generator
+import:
+- package: k8s.io/client-go
+  version: 2.0.0
+- package: github.com/golang/glog
