@@ -21,6 +21,7 @@ go-compile:
 
 docker-build:
   stage: package
+  image: docker:17.03.1-ce
   tags:
     - dockerbuild
   before_script:
