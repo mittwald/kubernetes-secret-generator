@@ -9,7 +9,7 @@ go-compile:
   image: golang:1.8.1
   stage: compile
   before_script:
-    - mkdir -p $GOPATH/github.com/mittwald/kubernetes-secret-generator
+    - mkdir -p $GOPATH/github.com/mittwald
     - ln -nfs $PWD $GOPATH/src/github.com/mittwald/kubernetes-secret-generator
     - cd $GOPATH/src/github.com/mittwald/kubernetes-secret-generator
   script:
