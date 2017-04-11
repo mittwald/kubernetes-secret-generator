@@ -1,0 +1,34 @@
+stages:
+  - compile
+  - package
+
+variables:
+  DOCKER_REPO_NAME: mittwald/kubernetes-secret-generator
+
+go-compile:
+  image: golang:1.8.1
+  stage: compile
+  before_script:
+    - mkdir -p $GOPATH/github.com/mittwald/kubernetes-secret-generator
+    - ln -nfs $PWD $GOPATH/src/github.com/mittwald/kubernetes-secret-generator
+    - cd $GOPATH/src/github.com/mittwald/kubernetes-secret-generator
+  script:
+    #- go build
+    - CGO_ENABLED=0 GOOS=linux go build -ldflags "-s" -a -installsuffix cgo
+  artifacts:
+    paths:
+      - ./kubernetes-secret-generator
+
+docker-build:
+  stage: package
+  tags:
+    - dockerbuild
+  before_script:
+    - docker login -u=${DOCKER_REPO_USER} -p=${DOCKER_REPO_TOKEN} ${DOCKER_REPO_HOST}
+  script:
+    - docker build -t ${DOCKER_REPO_NAME}:${CI_BUILD_TAG} .
+    - docker tag ${DOCKER_REPO_NAME}:${CI_BUILD_TAG} ${DOCKER_REPO_NAME}:latest
+    - docker push ${DOCKER_REPO_NAME}:${CI_BUILD_TAG}
+    - docker push ${DOCKER_REPO_NAME}:latest
+  only:
+    - tags
