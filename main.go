@@ -36,7 +36,7 @@ func main() {
 	flag.StringVar(&kubecfg, "kubeconfig", "", "Path to kubeconfig")
 	flag.StringVar(&namespace, "namespace", "default", "Namespace")
 	flag.BoolVar(&allNamespaces, "all-namespaces", false, "Watch all namespaces")
-	flag.BoolVar(&secretLength, "secret-length", 40, "Secret length")
+	flag.IntVar(&secretLength, "secret-length", 40, "Secret length")
 
 	flag.Parse()
 
