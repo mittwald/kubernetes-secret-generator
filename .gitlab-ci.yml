@@ -3,7 +3,7 @@ stages:
   - package
 
 variables:
-  DOCKER_REPO_NAME: mittwald/kubernetes-secret-generator
+  DOCKER_REPO_NAME: quay.io/mittwald/kubernetes-secret-generator
 
 go-compile:
   image: golang:1.8.1
