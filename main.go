@@ -30,7 +30,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"time"
 )
 
@@ -167,7 +168,11 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 func generateSecret(length int) (string, error) {
 	b := make([]rune, length)
 	for i := range b {
-		b[i] = runes[rand.Intn(len(runes))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(runes))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = runes[n.Int64()]
 	}
 	return string(b), nil
 }
