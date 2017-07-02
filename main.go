@@ -43,6 +43,7 @@ const (
 )
 
 var runes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+var runesLen = big.NewInt(int64(len(runes)))
 
 var namespace string
 var allNamespaces bool
@@ -177,7 +178,7 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 func generateSecret(length int) (string, error) {
 	b := make([]rune, length)
 	for i := range b {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(runes))))
+		n, err := rand.Int(rand.Reader, runesLen)
 		if err != nil {
 			return "", err
 		}
