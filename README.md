@@ -7,6 +7,9 @@ applications run on Kubernetes.
 ## Deployment
 
 ```shellsession
+$ # Create roles and service accounts
+$ kubectl apply -f https://raw.githubusercontent.com/mittwald/kubernetes-secret-generator/master/deploy/secret-generator-rbac.yaml
+$ # Create actual deployment
 $ kubectl apply -f https://raw.githubusercontent.com/mittwald/kubernetes-secret-generator/master/deploy/secret-generator.yaml
 ```
 
