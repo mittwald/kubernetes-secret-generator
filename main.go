@@ -153,6 +153,10 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		delete(secretCopy.Annotations, SecretRegenerateAnnotation)
 	}
 
+	if secretCopy.Data == nil {
+		secretCopy.Data = make(map[string][]byte)
+	}
+
 	secretCopy.Annotations[SecretGeneratedAtAnnotation] = time.Now().String()
 	secretCopy.Data[val] = []byte(newPassword)
 
