@@ -1,12 +1,10 @@
-FROM golang:1.11
+FROM        golang:1.12
+WORKDIR     /src
+COPY        . .
+RUN         CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubernetes-secret-generator
 
-COPY . /go/src/github.com/mittwald/kubernetes-secret-generator
-WORKDIR /go/src/github.com/mittwald/kubernetes-secret-generator
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o kubernetes-secret-generator
-
-FROM scratch
-MAINTAINER Martin Helmich <m.helmich@mittwald.de>
-
-COPY --from=0 /go/src/github.com/mittwald/kubernetes-secret-generator/kubernetes-secret-generator /kubernetes-secret-generator
-
-CMD ["/kubernetes-secret-generator", "-logtostderr"]
+FROM        scratch
+LABEL       MAINTAINER="Martin Helmich <m.helmich@mittwald.de>"
+COPY        --from=0 /src/kubernetes-secret-generator /kubernetes-secret-generator
+ENTRYPOINT  ["/kubernetes-secret-generator"]
+CMD         ["-logtostderr"]
