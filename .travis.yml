@@ -13,6 +13,7 @@ env:
   global:
     - GO111MODULE=on
     - CGO_ENABLED=0
+    - GO_VERSION=1.12
     - secure: aa2utqHdo2htOo5T42p7XGT43W95L8kavDICUp16ssEs6BMz/LTfrOn9AB30ZlpfmduzpnEC78+YsbCsoP/k//Z/GmrW0WLOxdWKEgYLnCZvqpI3k1FFvMilxlGaloGl5SMbw1v7f6mpeYmF4lWr7aFsONVu8ivqCZoRJK7QQf8E0175ZHpm6Xjzs1TZUTPT6GGPuWymVhE1MZqJYFwfPSE2xgsv7I4X7s4OLado4zfkxKynt+bV9+Vb960+nAY3oLVK9BYCmAh93uoIX5jveox0io+jrPMXKZRkwpW0jI3TuNnE8UTNKGm27Qj2huQVhFeFy+tGR37L6WDpuT47tD2V3WBo51RcpvZKlJD3HqPb1l7yW5EtLLa3K6lqa+uYbFXEDqMVvyuZhgyc2/rG6HlDf2bfM+/0njEV6XEUH2mLNiV8Viuab40WwZwrq+r5T8HxOZuUg+EShqC1en0VdjSXMWX5VHLlHog9qYe4UoBQw4A9s9DnfAgjTeEZ1wuH1uKoaaUQ+gA2UoZ9ywZxPmNJnq1phTQvQ+LnBiTbqen1C/ugKgkeE1U36hd21N5yjjYXqEZDoNxCuAc0GaucK5TzeJgL2/MJ0x5HetCmHB5T92BG6+2UjqZFfEnDjxszmPa5tXCJUnL4wa6OzgoFVwsez7HfA3SqDfSjf/Rn9s4=
 script:
   - bash <(wget -qO- https://git.io/goreleaser) --snapshot --skip-publish --rm-dist
