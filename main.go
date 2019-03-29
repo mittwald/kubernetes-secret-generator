@@ -88,13 +88,13 @@ func main() {
 				var lo v1.ListOptions
 				v1.Convert_api_ListOptions_To_v1_ListOptions(&alo, &lo, nil)
 
-				return client.Core().Secrets(namespace).List(lo)
+				return client.CoreV1().Secrets(namespace).List(lo)
 			},
 			WatchFunc: func(alo api.ListOptions) (watch.Interface, error) {
 				var lo v1.ListOptions
 				v1.Convert_api_ListOptions_To_v1_ListOptions(&alo, &lo, nil)
 
-				return client.Core().Secrets(namespace).Watch(lo)
+				return client.CoreV1().Secrets(namespace).Watch(lo)
 			},
 		},
 		&v1.Secret{},
@@ -164,9 +164,9 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		secretCopy.Data = make(map[string][]byte)
 	}
 
-	regenKeys := strings.Split(regenerate, ",")
+	regenKeys := strings.Split(regenerate, ".")
 
-	for _, key := range strings.Split(val, ",") {
+	for _, key := range strings.Split(val, ".") {
 		if regenerate == "" || regenerate == "true" || contains(regenKeys, key) {
 
 			secretCopy.Annotations[SecretGeneratedAtAnnotation] = time.Now().String()
@@ -184,7 +184,7 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		}
 	}
 
-	if _, err := c.client.Core().Secrets(secret.Namespace).Update(secretCopy); err != nil {
+	if _, err := c.client.CoreV1().Secrets(secret.Namespace).Update(secretCopy); err != nil {
 		glog.Errorf("could not add %s annotation to secret %s: %s", SecretGeneratedAtAnnotation, secret.Name, err)
 		return
 	}
