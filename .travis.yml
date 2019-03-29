@@ -3,6 +3,12 @@ language: go
 go:
   - '1.12'
 
+before_script:
+  - sudo sysctl -w net.ipv4.ip_forward=1
+
+services:
+  - docker
+
 env:
   global:
     - GO111MODULE=on
