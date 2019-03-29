@@ -24,7 +24,7 @@ before_deploy:
 deploy:
   - provider: script
     skip_cleanup: true
-    script: docker build -t "${FULL_IMAGE}:latest" && docker push "${FULL_IMAGE}:latest"
+    script: bash <(wget -qO- https://git.io/goreleaser) --snapshot --skip-publish --rm-dist && docker push "${FULL_IMAGE}:latest"
     on:
       tags: false
       branch: master
