@@ -13,7 +13,15 @@ script:
 
 before_deploy:
   - if [[ "${TRAVIS_BRANCH}" == "master" ]] && [[ "${TRAVIS_PULL_REQUEST}" == "false" ]]; then docker login -u "${DOCKER_LOGIN_NAME}" -p "${DOCKER_LOGIN_PASSWORD}" "${DOCKER_LOGIN_URL}"; fi
+  - export FULL_IMAGE="${DOCKER_LOGIN_URL}/mittwald/kubernetes-secret-generator"
 deploy:
+  - provider: script
+    skip_cleanup: true
+    script: docker build -t "${FULL_IMAGE}:latest" && docker push "${FULL_IMAGE}:latest"
+    on:
+      tags: false
+      branch: master
+      condition: $TRAVIS_OS_NAME = linux
   - provider: script
     skip_cleanup: true
     script: curl -sL https://git.io/goreleaser | bash -s -- --rm-dist

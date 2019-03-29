@@ -24,7 +24,9 @@ changelog:
 dockers:
   -
     image_templates:
-    - quay.io/mittwald/kubernetes-secret-generator
+    - quay.io/mittwald/kubernetes-secret-generator:stable
+    - quay.io/mittwald/kubernetes-secret-generator:{{ .Tag }}
+    - quay.io/mittwald/kubernetes-secret-generator:{{ .Tag }}-{{ .Env.GO_VERSION }}
     extra_files:
     - util/copy_secret.go
     - main.go
