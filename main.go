@@ -18,6 +18,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"flag"
 	"github.com/golang/glog"
 	"github.com/mittwald/kubernetes-secret-generator/util"
@@ -30,7 +31,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"crypto/rand"
 	"math/big"
 	"strings"
 	"time"
@@ -88,13 +88,13 @@ func main() {
 				var lo v1.ListOptions
 				v1.Convert_api_ListOptions_To_v1_ListOptions(&alo, &lo, nil)
 
-				return client.Core().Secrets(namespace).List(lo)
+				return client.CoreV1().Secrets(namespace).List(lo)
 			},
 			WatchFunc: func(alo api.ListOptions) (watch.Interface, error) {
 				var lo v1.ListOptions
 				v1.Convert_api_ListOptions_To_v1_ListOptions(&alo, &lo, nil)
 
-				return client.Core().Secrets(namespace).Watch(lo)
+				return client.CoreV1().Secrets(namespace).Watch(lo)
 			},
 		},
 		&v1.Secret{},
@@ -184,7 +184,7 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		}
 	}
 
-	if _, err := c.client.Core().Secrets(secret.Namespace).Update(secretCopy); err != nil {
+	if _, err := c.client.CoreV1().Secrets(secret.Namespace).Update(secretCopy); err != nil {
 		glog.Errorf("could not add %s annotation to secret %s: %s", SecretGeneratedAtAnnotation, secret.Name, err)
 		return
 	}
