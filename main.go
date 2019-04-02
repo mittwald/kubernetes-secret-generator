@@ -18,6 +18,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"flag"
 	"github.com/golang/glog"
 	"github.com/mittwald/kubernetes-secret-generator/util"
@@ -30,7 +31,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"crypto/rand"
 	"math/big"
 	"strings"
 	"time"
@@ -164,9 +164,9 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		secretCopy.Data = make(map[string][]byte)
 	}
 
-	regenKeys := strings.Split(regenerate, ".")
+	regenKeys := strings.Split(regenerate, ",")
 
-	for _, key := range strings.Split(val, ".") {
+	for _, key := range strings.Split(val, ",") {
 		if regenerate == "" || regenerate == "true" || contains(regenKeys, key) {
 
 			secretCopy.Annotations[SecretGeneratedAtAnnotation] = time.Now().String()
