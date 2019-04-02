@@ -19,7 +19,11 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"flag"
+	"strings"
+	"time"
+
 	"github.com/golang/glog"
 	"github.com/mittwald/kubernetes-secret-generator/util"
 	"k8s.io/client-go/kubernetes"
@@ -31,9 +35,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
-	"math/big"
-	"strings"
-	"time"
 )
 
 const (
@@ -42,9 +43,6 @@ const (
 	SecretRegenerateAnnotation  = "secret-generator.v1.mittwald.de/regenerate"
 	SecretSecureAnnotation      = "secret-generator.v1.mittwald.de/secure"
 )
-
-var runes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-var runesLen = big.NewInt(int64(len(runes)))
 
 var namespace string
 var allNamespaces bool
@@ -191,15 +189,10 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 }
 
 func generateSecret(length int) (string, error) {
-	b := make([]rune, length)
-	for i := range b {
-		n, err := rand.Int(rand.Reader, runesLen)
-		if err != nil {
-			return "", err
-		}
-		b[i] = runes[n.Int64()]
-	}
-	return string(b), nil
+	b := make([]byte, length)
+	rand.Read(b)
+
+	return base64.StdEncoding.EncodeToString(b)[0:length], nil
 }
 
 func contains(s []string, e string) bool {

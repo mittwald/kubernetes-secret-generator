@@ -6,7 +6,7 @@ applications run on Kubernetes.
 
 ## Security note
 
-Older versions (actually, just 0.0.1) of this controller used the `math/rand` package for generating secrets, which is deterministic and not cryptographically secure (see #1 for more information). If you're already running this controller and want to regenerate all potentially compromised secrets, start the controller with the `-regenerate-insecure` flag (note that you will need to manually re-create any Pods using these secrets, though). When using the `kubectl apply` command from below, the new flag will be added to your Deployment automatically.
+Older versions (>= 1.0.0) of this controller used the `math/rand` package for generating secrets, which is deterministic and not cryptographically secure (see #1 for more information). If you're already running this controller and want to regenerate all potentially compromised secrets, start the controller with the `-regenerate-insecure` flag (note that you will need to manually re-create any Pods using these secrets, though). When using the `kubectl apply` command from below, the new flag will be added to your Deployment automatically.
 
 ## Deployment
 
@@ -41,7 +41,9 @@ data:
 
     ```
     $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=true
+    ```
     
 -   Regenerate only certain fields
     ```
     $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=password1.password2
+    ```
