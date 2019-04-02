@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"flag"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
