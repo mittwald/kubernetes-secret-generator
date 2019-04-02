@@ -20,9 +20,10 @@ $ kubectl apply -f https://raw.githubusercontent.com/mittwald/kubernetes-secret-
 ## Usage
 
 Add the annotation `secret-generator.v1.mittwald.de/autogenerate` to any Kubernetes
-secret object. The value of the annotation can be a field name within the secret; the
-SecretGeneratorController will pick up this annotation and add a field (`password` in
-the example below) to the secret with a randomly generated string value.
+secret object. The value of the annotation can be a field name 
+(or dot separated list of field names) within the secret; the
+SecretGeneratorController will pick up this annotation and add a field [or fields] 
+(`password` in the example below) to the secret with a randomly generated string value.
 
 ```yaml
 apiVersion: v1
@@ -40,3 +41,9 @@ data:
 
     ```
     $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=true
+    ```
+    
+-   Regenerate only certain fields
+    ```
+    $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=password1.password2
+    ```

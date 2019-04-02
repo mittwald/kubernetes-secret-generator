@@ -85,13 +85,13 @@ func main() {
 				var lo v1.ListOptions
 				v1.Convert_api_ListOptions_To_v1_ListOptions(&alo, &lo, nil)
 
-				return client.Core().Secrets(namespace).List(lo)
+				return client.CoreV1().Secrets(namespace).List(lo)
 			},
 			WatchFunc: func(alo api.ListOptions) (watch.Interface, error) {
 				var lo v1.ListOptions
 				v1.Convert_api_ListOptions_To_v1_ListOptions(&alo, &lo, nil)
 
-				return client.Core().Secrets(namespace).Watch(lo)
+				return client.CoreV1().Secrets(namespace).Watch(lo)
 			},
 		},
 		&v1.Secret{},
@@ -129,7 +129,9 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		regenerateNeeded = true
 	}
 
-	if _, ok := secret.Annotations[SecretRegenerateAnnotation]; ok {
+	regenerate, ok := secret.Annotations[SecretRegenerateAnnotation]
+
+	if ok {
 		glog.Infof("regenerating of secret %s requested", secret.Name)
 		regenerateNeeded = true
 	}
@@ -150,12 +152,6 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		return
 	}
 
-	newPassword, err := generateSecret(secretLength)
-	if err != nil {
-		glog.Errorf("could not generate new secret: %s", err)
-		return
-	}
-
 	if _, ok := secretCopy.Annotations[SecretRegenerateAnnotation]; ok {
 		glog.Infof("removing annotation %s from secret %s", SecretRegenerateAnnotation, secret.Name)
 		delete(secretCopy.Annotations, SecretRegenerateAnnotation)
@@ -165,13 +161,27 @@ func (c *GeneratorController) SecretAdded(obj interface{}) {
 		secretCopy.Data = make(map[string][]byte)
 	}
 
-	secretCopy.Annotations[SecretGeneratedAtAnnotation] = time.Now().String()
-	secretCopy.Annotations[SecretSecureAnnotation] = "yes"
-	secretCopy.Data[val] = []byte(newPassword)
+	regenKeys := strings.Split(regenerate, ",")
 
-	glog.Infof("set value %s of secret %s to new randomly generated secret of %d bytes length", val, secret.Name, secretLength)
+	for _, key := range strings.Split(val, ",") {
+		if regenerate == "" || regenerate == "true" || contains(regenKeys, key) {
 
-	if _, err := c.client.Core().Secrets(secret.Namespace).Update(secretCopy); err != nil {
+			secretCopy.Annotations[SecretGeneratedAtAnnotation] = time.Now().String()
+			secretCopy.Annotations[SecretSecureAnnotation] = "yes"
+
+			newPassword, err := generateSecret(secretLength)
+			if err != nil {
+				glog.Errorf("could not generate new secret: %s", err)
+				return
+			}
+
+			secretCopy.Data[key] = []byte(newPassword)
+
+			glog.Infof("set value %s of secret %s to new randomly generated secret of %d bytes length", key, secret.Name, secretLength)
+		}
+	}
+
+	if _, err := c.client.CoreV1().Secrets(secret.Namespace).Update(secretCopy); err != nil {
 		glog.Errorf("could not add %s annotation to secret %s: %s", SecretGeneratedAtAnnotation, secret.Name, err)
 		return
 	}
@@ -182,4 +192,13 @@ func generateSecret(length int) (string, error) {
 	rand.Read(b)
 
 	return base64.StdEncoding.EncodeToString(b)[0:length], nil
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

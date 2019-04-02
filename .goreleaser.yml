@@ -1,0 +1,35 @@
+before:
+  hooks:
+    - go vet ./...
+    - go test -v ./...
+builds:
+  -
+    env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    goos:
+      - linux
+    goarch:
+      - amd64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+dockers:
+  -
+    image_templates:
+    - quay.io/mittwald/kubernetes-secret-generator:latest
+    - quay.io/mittwald/kubernetes-secret-generator:stable
+    - quay.io/mittwald/kubernetes-secret-generator:{{ .Tag }}
+    - quay.io/mittwald/kubernetes-secret-generator:{{ .Tag }}-{{ .Env.GO_VERSION }}
+    binaries:
+      - kubernetes-secret-generator
+    goos: linux
+    goarch: amd64
+    goarm: ''
