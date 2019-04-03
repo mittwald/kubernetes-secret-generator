@@ -45,5 +45,5 @@ data:
     
 -   Regenerate only certain fields
     ```
-    $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=password1.password2
+    $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=password1,password2
     ```
