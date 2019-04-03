@@ -27,7 +27,7 @@ dockers:
     - quay.io/mittwald/kubernetes-secret-generator:latest
     - quay.io/mittwald/kubernetes-secret-generator:stable
     - quay.io/mittwald/kubernetes-secret-generator:{{ .Tag }}
-    - quay.io/mittwald/kubernetes-secret-generator:{{ .Tag }}-{{ .Env.GO_VERSION }}
+    - quay.io/mittwald/kubernetes-secret-generator:{{ .Tag }}-go{{ .Env.GO_VERSION }}
     binaries:
       - kubernetes-secret-generator
     goos: linux
