@@ -10,11 +10,13 @@ Older versions (>= 1.0.0) of this controller used the `math/rand` package for ge
 
 ## Deployment
 
+The controller can be deployed using [Helm](https://helm.sh):
+
 ```shellsession
-$ # Create roles and service accounts
-$ kubectl apply -f https://raw.githubusercontent.com/mittwald/kubernetes-secret-generator/master/deploy/secret-generator-rbac.yaml
-$ # Create actual deployment
-$ kubectl apply -f https://raw.githubusercontent.com/mittwald/kubernetes-secret-generator/master/deploy/secret-generator.yaml
+$ # clone repository
+$ git clone https://github.com/mittwald/kubernetes-secret-generator
+$ # create helm deployment
+$ helm upgrade --install secret-generator ./deploy/chart
 ```
 
 ## Usage
