@@ -23,7 +23,7 @@ $ helm upgrade --install secret-generator ./deploy/chart
 
 Add the annotation `secret-generator.v1.mittwald.de/autogenerate` to any Kubernetes
 secret object. The value of the annotation can be a field name 
-(or dot separated list of field names) within the secret; the
+(or comma separated list of field names) within the secret; the
 SecretGeneratorController will pick up this annotation and add a field [or fields] 
 (`password` in the example below) to the secret with a randomly generated string value.
 
