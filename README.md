@@ -12,12 +12,19 @@ Older versions (>= 1.0.0) of this controller used the `math/rand` package for ge
 
 The controller can be deployed using [Helm](https://helm.sh):
 
-```shellsession
-$ # clone repository
-$ git clone https://github.com/mittwald/kubernetes-secret-generator
-$ # create helm deployment
-$ helm upgrade --install secret-generator ./deploy/chart
-```
+1. [Add the Mittwald-Charts Repo](https://github.com/mittwald/helm-charts/blob/master/README.md#usage):
+    ```shellsession
+    $ helm repo add mittwald https://helm.mittwald.de
+    "mittwald" has been added to your repositories
+
+    $ helm repo update
+    Hang tight while we grab the latest from your chart repositories...
+    ...Successfully got an update from the "mittwald" chart repository
+    Update Complete. ⎈ Happy Helming!⎈
+    ```
+
+2. Upgrade or install `kubernetes-replicator`:  
+  `helm upgrade --install kubernetes-secret-generator mittwald/kubernetes-secret-generator`
 
 ## Usage
 
