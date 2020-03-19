@@ -11,7 +11,7 @@ services:
   - docker
 
 script:
-  - bash <(wget -qO- https://git.io/goreleaser) --snapshot --skip-publish --rm-dist
+  - curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist
 
 before_deploy:
   - docker login -u "${DOCKER_LOGIN_USERNAME}" -p "${DOCKER_LOGIN_PASSWORD}" quay.io
