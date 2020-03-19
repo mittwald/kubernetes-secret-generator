@@ -1,37 +1,35 @@
 language: go
 
+os: linux
+
+dist: bionic
+
 go:
   - '1.12'
-
-before_script:
-  - sudo sysctl -w net.ipv4.ip_forward=1
 
 services:
   - docker
 
-env:
-  global:
-    - GO111MODULE=on
-    - CGO_ENABLED=0
-    - GO_VERSION=1.12
-    - secure: a6FJSuOoyjy4SZMvBLobprLMtKReOAX8c528jCe/HapvWkd0b8muSNDqiDNuf9S4dxkBd7Vq93LblPCs8mCVnMDx3Isx/Z1n6SeNefXmWMDaRUR72G0Dlb6gUfDEwqej9dMOAoFHFqtzGHB6TexTBjyM3y5GGo0T5Kt1AcslMt/bWcAu460+meuPRoFKd5pLjz/kCx7a2FGm63Jt0Zi8uN8vqAkJb15kcZWBNHyJJL0YXFIeBNJsfrAeBeRX20bpRWKuGJDAZiKlnUVQolHaUxrg8ZvHBGbCKEJQqRe+ZpMNo9Im7Xm00pHCPcgcGLDg5+8xtjQPmanhpY9Aun5PAD9oPXNlQ7wEKkC7SiXOyfm5PaT71yaZfi+7Qe4HwbwoZMXDF+XvgFjGoLT5hVawKW32/bs6SfuLWcl2nKRtIDjHm2K8P6uzO7YUUEidF2CsjS9Rf7fHuoAHLov82xdO+iUTEmZ3mySdrY3WO3niPcuBMg0C4E4aYRbDpP/LMNl75odwA1i/FZwFsTTp9yho9A0nn/djNq3INUumac/D8N0lPbvRyy5Xh69MVXb9YovbV4iHi8D8OZLOBoe98DOKy/zpNy0hzesJWR3ytWOBuVhseu1CiHoVOrJsyaGE9hOZz3k9g/NYHOtw3UJ01Kuhm7rJCyWclaxqmRZkHOOjQq8=
 script:
   - bash <(wget -qO- https://git.io/goreleaser) --snapshot --skip-publish --rm-dist
 
 before_deploy:
-  - if [[ -n "${DOCKER_LOGIN_USERNAME}" ]] && [[ -n "${DOCKER_LOGIN_PASSWORD}" ]] && [[ -n "${DOCKER_LOGIN_URL}" ]]; then docker login -u "${DOCKER_LOGIN_USERNAME}" -p "${DOCKER_LOGIN_PASSWORD}" "${DOCKER_LOGIN_URL}"; fi
-  - export FULL_IMAGE="${DOCKER_LOGIN_URL}/mittwald/kubernetes-secret-generator"
+  - docker login -u "${DOCKER_LOGIN_USERNAME}" -p "${DOCKER_LOGIN_PASSWORD}" quay.io
 deploy:
   - provider: script
-    skip_cleanup: true
-    script: curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist && docker push "${FULL_IMAGE}:latest"
+    cleanup: false
+    script: >-
+      curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist &&
+      docker push "quay.io/mittwald/kubernetes-secret-generator:latest"
     on:
       tags: false
       branch: master
       condition: $TRAVIS_OS_NAME = linux
   - provider: script
-    skip_cleanup: true
-    script: curl -sL https://git.io/goreleaser | bash -s -- --rm-dist
+    cleanup: false
+    script: >-
+      curl -sL https://git.io/goreleaser | bash -s -- --rm-dist &&
+      bash ./scripts/bump-app-version.sh publish
     on:
       tags: true
       condition: $TRAVIS_OS_NAME = linux
