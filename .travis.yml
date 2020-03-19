@@ -10,6 +10,11 @@ go:
 services:
   - docker
 
+env:
+  global:
+    - GO111MODULE=on
+    - CGO_ENABLED=0
+
 script:
   - curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist
 
