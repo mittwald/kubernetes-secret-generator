@@ -1,0 +1,34 @@
+{{- if .Values.serviceAccount.create -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "kubernetes-secret-generator.serviceAccountName" . }}
+  labels:
+{{ include "kubernetes-secret-generator.labels" . | nindent 4 }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: "mittwald:{{ include "kubernetes-secret-generator.serviceAccountName" . }}"
+  labels:
+{{ include "kubernetes-secret-generator.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list", "update"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: "mittwald:{{ include "kubernetes-secret-generator.serviceAccountName" . }}"
+  labels:
+{{ include "kubernetes-secret-generator.labels" . | nindent 4 }}
+roleRef:
+  kind: ClusterRole
+  name: "mittwald:{{ include "kubernetes-secret-generator.serviceAccountName" . }}"
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    namespace: {{ .Release.Namespace | quote }}
+    name: {{ include "kubernetes-secret-generator.serviceAccountName" . }}
+{{- end -}}
