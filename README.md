@@ -23,7 +23,7 @@ The controller can be deployed using [Helm](https://helm.sh):
     Update Complete. ⎈ Happy Helming!⎈
     ```
 
-2. Upgrade or install `kubernetes-replicator`:  
+2. Upgrade or install `kubernetes-secret-generator`:  
   `helm upgrade --install kubernetes-secret-generator mittwald/kubernetes-secret-generator`
 
 ## Usage
