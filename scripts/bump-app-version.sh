@@ -46,7 +46,7 @@ git add -A
 git status
 
 ## stage changes
-git commit -m "Bump appVersion to '${TRAVIS_TAG}'"
+git commit -m "Bump appVersion to '${TRAVIS_TAG}' and version to '${TRAVIS_TAG/v/}'"
 
 ## rebase
 git pull --rebase publisher master
