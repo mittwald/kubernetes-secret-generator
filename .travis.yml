@@ -50,7 +50,7 @@ jobs:
       script:
         - make build DOCKER_IMAGE="${IMAGE_NAME}:latest" KUBE_SECRET_OPERATOR_VERSION=${TRAVIS_COMMIT::8}
         - docker push "${IMAGE_NAME}:latest"
-      if: branch=master AND tag IS blank
+      if: (branch = master) AND (tag IS blank)
 
     - stage: deploy
       before_script:
@@ -61,4 +61,4 @@ jobs:
         - docker push "${IMAGE_NAME}:latest"
         - docker push "${IMAGE_NAME}:${TRAVIS_TAG}"
         - bash ./scripts/bump-app-version.sh publish
-      if: branch=master AND tag IS present
+      if: (branch = master) AND (tag IS present)
