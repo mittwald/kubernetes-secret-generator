@@ -5,7 +5,7 @@ os: linux
 dist: bionic
 
 go:
-  - '1.12'
+  - '1.13.x'
 
 services:
   - docker
@@ -13,28 +13,52 @@ services:
 env:
   global:
     - GO111MODULE=on
-    - CGO_ENABLED=0
+    - KIND_VERSION=v0.7.0
+    - OPERATOR_SDK_VERSION=v0.16.0
+    - IMAGE_NAME=quay.io/mittwald/kubernetes-secret-generator
+    - KUBECONFIG="/tmp/kubeconfig"
 
-script:
-  - curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist
+.before_build: &before_build |-
+  curl -Lo operator-sdk https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu && chmod +x operator-sdk && sudo mv operator-sdk /usr/local/bin
 
 before_deploy:
   - docker login -u "${DOCKER_LOGIN_USERNAME}" -p "${DOCKER_LOGIN_PASSWORD}" quay.io
-deploy:
-  - provider: script
-    cleanup: false
-    script: >-
-      curl -sL https://git.io/goreleaser | bash -s -- --snapshot --skip-publish --rm-dist &&
-      docker push "quay.io/mittwald/kubernetes-secret-generator:latest"
-    on:
-      tags: false
-      branch: master
-      condition: $TRAVIS_OS_NAME = linux
-  - provider: script
-    cleanup: false
-    script: >-
-      curl -sL https://git.io/goreleaser | bash -s -- --rm-dist &&
-      bash ./scripts/bump-app-version.sh publish
-    on:
-      tags: true
-      condition: $TRAVIS_OS_NAME = linux
+
+jobs:
+  include:
+    - stage: test
+      install:
+        - curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 && chmod +x kind && sudo mv kind /usr/local/bin/
+        - kind get kubeconfig --internal --name kind-${CI_CONCURRENT_ID} | tee ${KUBECONFIG}
+      script:
+        - make test
+      name: "test"
+
+    - script:
+        - diff -u <(echo -n) <(gofmt -d -s .)
+      name: "gofmt"
+
+    - stage: build
+      before_script:
+        - *before_build
+      script:
+        - make build DOCKER_IMAGE="${IMAGE_NAME}:latest" KUBE_SECRET_OPERATOR_VERSION=${TRAVIS_COMMIT::8}
+
+    - stage: deploy
+      before_script:
+        - *before_build
+      script:
+        - make build DOCKER_IMAGE="${IMAGE_NAME}:latest" KUBE_SECRET_OPERATOR_VERSION=${TRAVIS_COMMIT::8}
+        - docker push "${IMAGE_NAME}:latest"
+      if: branch=master AND tag IS blank
+
+    - stage: deploy
+      before_script:
+        - *before_build
+      script:
+        - make build DOCKER_IMAGE="${IMAGE_NAME}:latest" KUBE_SECRET_OPERATOR_VERSION=${TRAVIS_TAG}
+        - docker tag "${IMAGE_NAME}:latest" "${IMAGE_NAME}:${TRAVIS_TAG}"
+        - docker push "${IMAGE_NAME}:latest"
+        - docker push "${IMAGE_NAME}:${TRAVIS_TAG}"
+        - bash ./scripts/bump-app-version.sh publish
+      if: branch=master AND tag IS present

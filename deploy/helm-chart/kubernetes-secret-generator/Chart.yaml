@@ -2,12 +2,12 @@
 # https://github.com/mittwald/helm-charts/blob/master/README.md#limitations
 apiVersion: v1
 name: kubernetes-secret-generator
-description: Controller for replicating secrets+configmaps across namespaces
+description: Controller for automatically creating random secret values
 
 # type will be set to soon as Github Workflows supports Helmv2 Charts
 # https://github.com/mittwald/helm-charts/blob/master/README.md#limitations
 #type: application
 
-version: 2.1.2
+version: 3.0.0
 
-appVersion: v2.1.2
+appVersion: v3.0.0

@@ -10,7 +10,21 @@ Older versions (>= 1.0.0) of this controller used the `math/rand` package for ge
 
 ## Deployment
 
-The controller can be deployed using [Helm](https://helm.sh):
+### Helm
+The controller can be deployed using [Helm](https://helm.sh).
+
+You might want to take a look a the [values.yaml](deploy/helm-chart/kubernetes-secret-generator/values.yaml) to adjust the operator to your needs.
+
+`secretLength` defines the length of the generated secret values.
+
+`watchNamespace` defines, which namespaces should be watched for secret objects.
+
+To watch a single namespace, set it to the desired namespace name.
+Multiple namespaces are supported and can be set as a comma-separated list: `ns1,ns2`.
+
+If `watchNamespace` is set to the empty string value `""`, all namespaces will be watched.
+
+Afterwards, deploy the operator using:
 
 1. [Add the Mittwald-Charts Repo](https://github.com/mittwald/helm-charts/blob/master/README.md#usage):
     ```shellsession
@@ -25,6 +39,17 @@ The controller can be deployed using [Helm](https://helm.sh):
 
 2. Upgrade or install `kubernetes-secret-generator`:  
   `helm upgrade --install kubernetes-secret-generator mittwald/kubernetes-secret-generator`
+ 
+### Manually
+If you don't want to use helm, the required .yaml files can also be applied manually using kubectl apply:
+ ```shellsession
+$ make install
+```
+
+To uninstall, use:
+```shellsession
+$ make uninstall
+```
 
 ## Usage
 
