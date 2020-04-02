@@ -202,7 +202,7 @@ func verifyRegen(t *testing.T, in, out *corev1.Secret) {
 				t.Errorf("regenerated field has wrong length of %d", len(val))
 			}
 
-			if bytes.Compare(in.Data[key], val) == 0 {
+			if bytes.Equal(in.Data[key], val) {
 				t.Errorf("key %s is equal for in(%s) and out (%s)", key, in.Data[key], out.Data[key])
 				continue
 			}
@@ -216,7 +216,7 @@ func verifyRegen(t *testing.T, in, out *corev1.Secret) {
 		if stringInSlice(key, regenKeys) {
 			continue
 		}
-		if bytes.Compare(in.Data[key], out.Data[key]) == 0 {
+		if bytes.Equal(in.Data[key], out.Data[key]) {
 			t.Logf("key %s is equal for in(%s) and out (%s)", key, in.Data[key], out.Data[key])
 			continue
 		}
