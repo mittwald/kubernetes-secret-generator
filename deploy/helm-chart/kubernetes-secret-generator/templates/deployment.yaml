@@ -38,9 +38,9 @@ spec:
             - name: OPERATOR_NAME
               value: "kubernetes-secret-generator"
             - name: REGENERATE_INSECURE
-              value: {{ .Values.regenerateInsecure }}
+              value: {{ .Values.regenerateInsecure | quote }}
             - name: SECRET_LENGTH
-              value: {{ .Values.secretLength }}
+              value: {{ .Values.secretLength | quote }}
           resources:
       {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
