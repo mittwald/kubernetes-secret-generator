@@ -53,31 +53,90 @@ $ make uninstall
 
 ## Usage
 
-Add the annotation `secret-generator.v1.mittwald.de/autogenerate` to any Kubernetes
-secret object. The value of the annotation can be a field name 
-(or comma separated list of field names) within the secret; the
-SecretGeneratorController will pick up this annotation and add a field [or fields] 
-(`password` in the example below) to the secret with a randomly generated string value.
+This operator is capable of generating password and ssh keypair secrets. 
+
+The type of secret to be generated can be specified by the `secret-generator.v1.mittwald.de/type` annotation.
+This annotation can be added to any Kubernetes secret object in the operators `watchNamespace`.
+
+### Passwords
+
+By default, password secrets will be generated. If the annotation is not present, it will be added after the first
+reconciliation loop and its value will be set to `password`.
+
+To actually generate password secrets, the `secret-generator.v1.mittwald.de/autogenerate` annotation is required as well.
+The value of the annotation can be a field name (or comma separated list of field names) within the secret;
+the SecretGeneratorController will pick up this annotation and add a field [or fields] 
+(`examplepw` in the example below) to the secret with a randomly generated string value.
 
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
+  name: password-secret
   annotations:
     secret-generator.v1.mittwald.de/autogenerate: password
 data:
   username: c29tZXVzZXI=
 ```
 
+after reconciliation:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: password-secret
+  annotations:
+    secret-generator.v1.mittwald.de/type: password
+    secret-generator.v1.mittwald.de/secure: "yes"
+    secret-generator.v1.mittwald.de/autogenerate: examplepw
+    secret-generator.v1.mittwald.de/autogenerate-generated-at: "2020-04-03T14:07:47+02:00"
+type: Opaque
+data:
+  username: c29tZXVzZXI=
+  examplepw: TWVwSU83L2huNXBralNTMHFwU3VKSkkwNmN4NmRpNTBBcVpuVDlLOQ==
+```
+
+### SSH Key Pairs
+
+To generate SSH Key Pairs, the `secret-generator.v1.mittwald.de/type` annotation **has** to be present on the kubernetes secret object.
+
+The operator will then add two keys to the secret object, `ssh-publickey` and `ssh-privatekey`, each containing the respective key.
+
+The Private Key will be PEM encoded, the Public Key will have the authorized-keys format.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    secret-generator.v1.mittwald.de/autogenerate: ssh-keypair
+data: {}
+```
+
+after reconciliation:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    secret-generator.v1.mittwald.de/type: ssh-keypair
+    secret-generator.v1.mittwald.de/autogenerate-generated-at: "2020-04-03T14:07:47+02:00"
+type: Opaque
+data:
+  ssh-publickey: c3NoLXJzYSBBQUFBQ...
+  ssh-privatekey: LS0tLS1CRUdJTi...
+```
+
 ## Operational tasks
 
--   Regenerate all automatically generated passwords:
-
+-   Regenerate all automatically generated secrets:
     ```
     $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=true
     ```
     
--   Regenerate only certain fields
+-   Regenerate only certain fields, in case the secret is of the `password` type:
     ```
     $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=password1,password2
     ```
