@@ -4,7 +4,7 @@ name: Go
 on:
   push:
     branches:
-      - '*'
+      - 'master'
     tags:
       - '*'
   pull_request:
@@ -38,9 +38,11 @@ jobs:
         run: make kind
 
       - name: Hack Code Climate and Go Modules
+        if: github.event_name != 'pull_request'
         run: mkdir -p github.com/mittwald && ln -sf $(pwd) github.com/mittwald/kubernetes-secret-generator
 
       - name: Test & publish code coverage
+        if: github.event_name != 'pull_request'
         uses: paambaati/codeclimate-action@v2.3.0
         env:
           CC_TEST_REPORTER_ID: ${{ secrets.codeClimateReporterID }}
@@ -48,6 +50,10 @@ jobs:
           coverageCommand: go test -coverprofile=c.out ./...
           debug: true
           prefix: 'github.com/${{ github.repository }}/'
+
+      - name: Go Test
+        if: github.event_name == 'pull_request'
+        run: go test -coverprofile=c.out ./...
 
   build:
     name: Build Image
@@ -79,7 +85,7 @@ jobs:
         with:
           go-version: 1.13
         id: go
-        
+
       - name: Registry Login
         run: docker login -u "${{ secrets.dockerLoginUsername }}" -p "${{ secrets.dockerLoginPassword }}" quay.io
 
@@ -106,10 +112,10 @@ jobs:
         with:
           go-version: 1.13
         id: go
-        
+
       - name: Registry Login
         run: docker login -u "${{ secrets.dockerLoginUsername }}" -p "${{ secrets.dockerLoginPassword }}" quay.io
-        
+
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
 
@@ -124,6 +130,6 @@ jobs:
 
       - name: Push images
         run: docker push "$IMAGE_NAME:latest" && docker push "$IMAGE_NAME:${GITHUB_REF##*/}"
-        
+
       - name: Bump Chart Version
         run: bash ./scripts/bump-app-version.sh publish "${GITHUB_REF##*/}" "${{ secrets.githubToken }}"
