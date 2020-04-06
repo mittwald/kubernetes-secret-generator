@@ -52,4 +52,4 @@ secretLength: 40
 # Namespace that are watched for secret generation
 # Accepts a comma-separated list of namespaces: ns1,ns2
 # If set to "", all namespaces will be watched
-watchNamespace: "default"
+watchNamespace: ""

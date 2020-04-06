@@ -79,6 +79,10 @@ func main() {
 
 	viper.AutomaticEnv()
 
+	if viper.GetInt("secret-length") == 0 {
+		panic(fmt.Errorf("parameter secret-length is set to 0"))
+	}
+
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being
 	// used), this defaults to a production zap logger.
