@@ -8,11 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/flowcontrol"
 	"os"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -103,6 +105,36 @@ func doReconcile(t *testing.T, secret *corev1.Secret, isErr bool) {
 		require.NoError(t, err)
 	}
 	require.False(t, res.Requeue)
+}
+
+func TestDoesNotTouchOtherSecrets(t *testing.T) {
+	secret := &corev1.Secret{
+		Type: corev1.SecretTypeOpaque,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      getSecretName(),
+			Namespace: "default",
+			Labels: map[string]string{
+				labelSecretGeneratorTest: "yes",
+			},
+		},
+		Data: map[string][]byte{
+			"testkey":  []byte("test"),
+			"testkey2": []byte("test2"),
+		},
+	}
+
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), secret))
+
+	doReconcile(t, secret, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      secret.Name,
+		Namespace: secret.Namespace}, out))
+
+	if !reflect.DeepEqual(secret, out) {
+		t.Errorf("secret without operator annotations has been reconciled")
+	}
 }
 
 func stringInSlice(a string, list []string) bool {
