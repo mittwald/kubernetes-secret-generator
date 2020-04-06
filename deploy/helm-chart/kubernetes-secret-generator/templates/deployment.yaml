@@ -3,42 +3,55 @@ kind: Deployment
 metadata:
   name: {{ include "kubernetes-secret-generator.fullname" . }}
   labels:
-    {{- include "kubernetes-secret-generator.labels" . | nindent 4 }}
+  {{- include "kubernetes-secret-generator.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 6 }}
+  {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 8 }}
+    {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 8 }}
     spec:
-    {{- with .Values.imagePullSecrets }}
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "kubernetes-secret-generator.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: {{ toYaml .Values.args | nindent 12 }}
+          env:
+            - name: WATCH_NAMESPACE
+              value: {{ .Values.watchNamespace }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "kubernetes-secret-generator"
+            - name: REGENERATE_INSECURE
+              value: {{ .Values.regenerateInsecure | quote }}
+            - name: SECRET_LENGTH
+              value: {{ .Values.secretLength | quote }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+      {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
-        {{- toYaml . | nindent 8 }}
+      {{- toYaml . | nindent 8 }}
       {{- end }}
-    {{- with .Values.affinity }}
+      {{- with .Values.affinity }}
       affinity:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.tolerations }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
       tolerations:
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
+    {{- toYaml . | nindent 8 }}
+  {{- end }}

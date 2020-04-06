@@ -12,8 +12,9 @@ GIT_REPOSITORY="github.com/mittwald/kubernetes-secret-generator.git"
 CHART_YAML="./deploy/helm-chart/kubernetes-secret-generator/Chart.yaml"
 
 ## avoid noisy shellcheck warnings
-TRAVIS_TAG="${TRAVIS_TAG:-v0.0.0}"
-GITHUB_TOKEN="${GITHUB_TOKEN:-dummy}"
+MODE="${1}"
+TAG="${2:-v0.0.0}"
+GITHUB_TOKEN="${3:-dummy}"
 
 ## temp working vars
 TIMESTAMP="$(date +%s )"
@@ -51,7 +52,7 @@ git commit -m "Bump appVersion to '${TRAVIS_TAG}' and version to '${TRAVIS_TAG/v
 ## rebase
 git pull --rebase publisher master
 
-if [[ "${1}" == "publish" ]]; then
+if [[ "$MODE" == "publish" ]]; then
 
     ## publish changes
     git push publisher master

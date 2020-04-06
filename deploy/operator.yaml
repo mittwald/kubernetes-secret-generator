@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-secret-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: kubernetes-secret-generator
+  template:
+    metadata:
+      labels:
+        name: kubernetes-secret-generator
+    spec:
+      serviceAccountName: kubernetes-secret-generator
+      containers:
+        - name: kubernetes-secret-generator
+          # Replace this with the built image name
+          image: quay.io/mittwald/kubernetes-secret-generator:latest
+          command:
+            - kubernetes-secret-generator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "kubernetes-secret-generator"
+            - name: REGENERATE_INSECURE
+              value: "true"
+            - name: SECRET_LENGTH
+              value: "40"
