@@ -53,17 +53,17 @@ $ make uninstall
 
 ## Usage
 
-This operator is capable of generating password and ssh keypair secrets. 
+This operator is capable of generating secure random strings and ssh keypair secrets. 
 
 The type of secret to be generated can be specified by the `secret-generator.v1.mittwald.de/type` annotation.
 This annotation can be added to any Kubernetes secret object in the operators `watchNamespace`.
 
-### Passwords
+### Secure Random Strings
 
-By default, password secrets will be generated. If the annotation is not present, it will be added after the first
-reconciliation loop and its value will be set to `password`.
+By default, the operator will generate secure random strings. If the type annotation is not present, it will be added after the first
+reconciliation loop and its value will be set to `string`.
 
-To actually generate password secrets, the `secret-generator.v1.mittwald.de/autogenerate` annotation is required as well.
+To actually generate random string secrets, the `secret-generator.v1.mittwald.de/autogenerate` annotation is required as well.
 The value of the annotation can be a field name (or comma separated list of field names) within the secret;
 the SecretGeneratorController will pick up this annotation and add a field [or fields] 
 (`examplepw` in the example below) to the secret with a randomly generated string value.
@@ -72,7 +72,7 @@ the SecretGeneratorController will pick up this annotation and add a field [or f
 apiVersion: v1
 kind: Secret
 metadata:
-  name: password-secret
+  name: string-secret
   annotations:
     secret-generator.v1.mittwald.de/autogenerate: password
 data:
@@ -85,16 +85,16 @@ after reconciliation:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: password-secret
+  name: string-secret
   annotations:
-    secret-generator.v1.mittwald.de/type: password
+    secret-generator.v1.mittwald.de/type: string
     secret-generator.v1.mittwald.de/secure: "yes"
-    secret-generator.v1.mittwald.de/autogenerate: examplepw
+    secret-generator.v1.mittwald.de/autogenerate: password
     secret-generator.v1.mittwald.de/autogenerate-generated-at: "2020-04-03T14:07:47+02:00"
 type: Opaque
 data:
   username: c29tZXVzZXI=
-  examplepw: TWVwSU83L2huNXBralNTMHFwU3VKSkkwNmN4NmRpNTBBcVpuVDlLOQ==
+  password: TWVwSU83L2huNXBralNTMHFwU3VKSkkwNmN4NmRpNTBBcVpuVDlLOQ==
 ```
 
 ### SSH Key Pairs
@@ -110,7 +110,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   annotations:
-    secret-generator.v1.mittwald.de/autogenerate: ssh-keypair
+    secret-generator.v1.mittwald.de/type: ssh-keypair
 data: {}
 ```
 

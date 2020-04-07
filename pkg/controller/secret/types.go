@@ -12,18 +12,19 @@ const (
 	AnnotationSecretRegenerate  = "secret-generator.v1.mittwald.de/regenerate"
 	AnnotationSecretSecure      = "secret-generator.v1.mittwald.de/secure"
 	AnnotationSecretType        = "secret-generator.v1.mittwald.de/type"
+	AnnotationSecretLength      = "secret-generator.v1.mittwald.de/length"
 )
 
 type SecretType string
 
 const (
-	SecretTypePassword   SecretType = "password"
+	SecretTypeString     SecretType = "string"
 	SecretTypeSSHKeypair SecretType = "ssh-keypair"
 )
 
-func (st SecretType) IsValid() error {
+func (st SecretType) Validate() error {
 	switch st {
-	case SecretTypePassword,
+	case SecretTypeString,
 		SecretTypeSSHKeypair:
 		return nil
 	}

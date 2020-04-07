@@ -27,6 +27,10 @@ func secretLength() int {
 	return viper.GetInt("secret-length")
 }
 
+func sshKeyLength() int {
+	return viper.GetInt("ssh-key-length")
+}
+
 // Add creates a new Secret Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -92,15 +96,15 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 	desired := instance.DeepCopy()
 
 	sType := SecretType(desired.Annotations[AnnotationSecretType])
-	if err := sType.IsValid(); err != nil {
+	if err := sType.Validate(); err != nil {
 		if _, ok := desired.Annotations[AnnotationSecretGenerate]; !ok && sType == "" {
 			// return if secret has no type and no autogenerate annotation
 			return reconcile.Result{}, nil
 		}
 
-		// keep backwards compatibility by defaulting to  password type
-		desired.Annotations[AnnotationSecretType] = string(SecretTypePassword)
-		sType = SecretTypePassword
+		// keep backwards compatibility by defaulting to string type
+		desired.Annotations[AnnotationSecretType] = string(SecretTypeString)
+		sType = SecretTypeString
 	}
 
 	reqLogger = reqLogger.WithValues("type", sType)
@@ -116,9 +120,9 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 		generator = SSHKeypairGenerator{
 			log: reqLogger.WithValues("type", SecretTypeSSHKeypair),
 		}
-	case SecretTypePassword:
-		generator = PasswordGenerator{
-			log: reqLogger.WithValues("type", SecretTypePassword),
+	case SecretTypeString:
+		generator = StringGenerator{
+			log: reqLogger.WithValues("type", SecretTypeString),
 		}
 	}
 

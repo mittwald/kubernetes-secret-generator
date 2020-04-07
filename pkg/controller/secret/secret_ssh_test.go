@@ -37,7 +37,7 @@ func newSSHKeypairTestSecret(t *testing.T, extraAnnotations map[string]string, i
 	}
 
 	if initialized {
-		keypair, err := generateSSHKeypair()
+		keypair, err := generateSSHKeypair(sshKeyLength())
 		if err != nil {
 			t.Error(err, "could not generate new ssh keypair")
 		}
@@ -69,6 +69,11 @@ func verifySSHKeypairSecret(t *testing.T, in, out *corev1.Secret) {
 	key, err := privateKeyFromPEM(privateKey)
 	if err != nil {
 		t.Error(err, "generated private key could not be parsed")
+	}
+
+	err = key.Validate()
+	if err != nil {
+		t.Error(err, "key validation failed")
 	}
 
 	pub, err := sshPublicKeyForPrivateKey(key)
@@ -157,4 +162,55 @@ func TestSSHKeypairIsRegenerated(t *testing.T) {
 		Namespace: in.Namespace}, out))
 	verifySSHKeypairSecret(t, in, out)
 	verifySSHKeypairRegen(t, in, out, true)
+}
+
+func TestSSHKeypairLengthAnnotation(t *testing.T) {
+	in := newSSHKeypairTestSecret(t, map[string]string{
+		AnnotationSecretRegenerate: "true",
+		AnnotationSecretLength:     "4096",
+	}, true)
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcile(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+	verifySSHKeypairSecret(t, in, out)
+
+	key, err := privateKeyFromPEM(out.Data[SecretFieldPrivateKey])
+	if err != nil {
+		t.Error(err, "generated private key could not be parsed")
+	}
+
+	// Size() returns size in bytes
+	if key.Size()*8 != 4096 {
+		t.Error(err, "wrong generated secret length")
+	}
+}
+
+func TestSSHKeypairLengthDefault(t *testing.T) {
+	in := newSSHKeypairTestSecret(t, map[string]string{
+		AnnotationSecretRegenerate: "true",
+	}, true)
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcile(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+	verifySSHKeypairSecret(t, in, out)
+
+	key, err := privateKeyFromPEM(out.Data[SecretFieldPrivateKey])
+	if err != nil {
+		t.Error(err, "generated private key could not be parsed")
+	}
+
+	// Size() returns size in bytes
+	if key.Size()*8 != 2048 {
+		t.Error("wrong generated secret length")
+	}
 }

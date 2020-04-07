@@ -71,6 +71,7 @@ func TestMain(m *testing.M) {
 func setupViper() {
 	viper.Set("secret-length", 40)
 	viper.Set("regenerate-insecure", false)
+	viper.Set("ssh-key-length", 2048)
 }
 
 func reset() {

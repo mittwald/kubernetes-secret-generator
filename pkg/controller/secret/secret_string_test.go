@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func newPasswordTestSecret(fields string, extraAnnotations map[string]string, initValues string) *corev1.Secret {
+func newStringTestSecret(fields string, extraAnnotations map[string]string, initValues string) *corev1.Secret {
 	annotations := map[string]string{
 		AnnotationSecretGenerate: fields,
 	}
@@ -46,8 +46,8 @@ func newPasswordTestSecret(fields string, extraAnnotations map[string]string, in
 }
 
 // verify basic fields of the secret are present
-func verifyPasswordSecret(t *testing.T, in, out *corev1.Secret, secure bool) {
-	if out.Annotations[AnnotationSecretType] != string(SecretTypePassword) {
+func verifyStringSecret(t *testing.T, in, out *corev1.Secret, secure bool) {
+	if out.Annotations[AnnotationSecretType] != string(SecretTypeString) {
 		t.Errorf("generated secret has wrong type %s on  %s annotation", out.Annotations[AnnotationSecretType], AnnotationSecretType)
 	}
 
@@ -79,7 +79,7 @@ func verifyPasswordSecret(t *testing.T, in, out *corev1.Secret, secure bool) {
 }
 
 // verify requested keys have been regenerated
-func verifyPasswordRegen(t *testing.T, in, out *corev1.Secret) {
+func verifyStringRegen(t *testing.T, in, out *corev1.Secret) {
 	if _, ok := out.Annotations[AnnotationSecretRegenerate]; ok {
 		t.Errorf("%s annotation is still present", AnnotationSecretRegenerate)
 	}
@@ -106,7 +106,7 @@ func verifyPasswordRegen(t *testing.T, in, out *corev1.Secret) {
 		for _, key := range regenKeys {
 			val := out.Data[key]
 			if len(val) == 0 || len(val) != secretLength() {
-				// check length here again, verifyPasswordSecret skips this for secrets that already had the generatedAt Annotation
+				// check length here again, verifyStringSecret skips this for secrets that already had the generatedAt Annotation
 				t.Errorf("regenerated field has wrong length of %d", len(val))
 			}
 
@@ -133,7 +133,7 @@ func verifyPasswordRegen(t *testing.T, in, out *corev1.Secret) {
 }
 
 func TestGenerateSecretSingleField(t *testing.T) {
-	in := newPasswordTestSecret("testfield", nil, "")
+	in := newStringTestSecret("testfield", nil, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, false)
@@ -143,11 +143,11 @@ func TestGenerateSecretSingleField(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
+	verifyStringSecret(t, in, out, true)
 }
 
 func TestGenerateSecretMultipleFields(t *testing.T) {
-	in := newPasswordTestSecret("testfield,test1,test2,test3,abc,12345,6789", nil, "")
+	in := newStringTestSecret("testfield,test1,test2,test3,abc,12345,6789", nil, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, false)
@@ -157,11 +157,11 @@ func TestGenerateSecretMultipleFields(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
+	verifyStringSecret(t, in, out, true)
 }
 
 func TestRegenerateSingleField(t *testing.T) {
-	in := newPasswordTestSecret("testfield", map[string]string{
+	in := newStringTestSecret("testfield", map[string]string{
 		AnnotationSecretRegenerate:  "testfield",
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 	}, "test")
@@ -174,12 +174,12 @@ func TestRegenerateSingleField(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 }
 
 func TestRegenerateAllSingleField(t *testing.T) {
-	in := newPasswordTestSecret("testfield", map[string]string{
+	in := newStringTestSecret("testfield", map[string]string{
 		AnnotationSecretRegenerate:  "yes",
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 	}, "test")
@@ -192,12 +192,12 @@ func TestRegenerateAllSingleField(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 }
 
 func TestRegenerateMultipleFieldsSecure(t *testing.T) {
-	in := newPasswordTestSecret("testfield,test1,test2", map[string]string{
+	in := newStringTestSecret("testfield,test1,test2", map[string]string{
 		AnnotationSecretRegenerate:  "testfield",
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 		AnnotationSecretSecure:      "yes",
@@ -211,12 +211,12 @@ func TestRegenerateMultipleFieldsSecure(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 }
 
 func TestRegenerateMultipleFieldsNotSecure(t *testing.T) {
-	in := newPasswordTestSecret("testfield,test1,test2", map[string]string{
+	in := newStringTestSecret("testfield,test1,test2", map[string]string{
 		AnnotationSecretRegenerate:  "testfield",
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 	}, "test,abc,def")
@@ -229,12 +229,12 @@ func TestRegenerateMultipleFieldsNotSecure(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, false)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, false)
+	verifyStringRegen(t, in, out)
 }
 
 func TestRegenerateAllMultipleFields(t *testing.T) {
-	in := newPasswordTestSecret("testfield,test1,test2", map[string]string{
+	in := newStringTestSecret("testfield,test1,test2", map[string]string{
 		AnnotationSecretRegenerate:  "yes",
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 	}, "test,abc,def")
@@ -247,13 +247,13 @@ func TestRegenerateAllMultipleFields(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 }
 
 func TestRegenerateInsecureSingleField(t *testing.T) {
 	viper.Set("regenerate-insecure", true)
-	in := newPasswordTestSecret("testfield", map[string]string{
+	in := newStringTestSecret("testfield", map[string]string{
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 	}, "test")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
@@ -265,14 +265,14 @@ func TestRegenerateInsecureSingleField(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 	viper.Set("regenerate-insecure", false)
 }
 
 func TestRegenerateInsecureEmpty(t *testing.T) {
 	viper.Set("regenerate-insecure", true)
-	in := newPasswordTestSecret("testfield", nil, "")
+	in := newStringTestSecret("testfield", nil, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, false)
@@ -282,13 +282,13 @@ func TestRegenerateInsecureEmpty(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
+	verifyStringSecret(t, in, out, true)
 	viper.Set("regenerate-insecure", false)
 }
 
 func TestRegenerateInsecureSingleFieldSecureBefore(t *testing.T) {
 	viper.Set("regenerate-insecure", true)
-	in := newPasswordTestSecret("testfield", map[string]string{
+	in := newStringTestSecret("testfield", map[string]string{
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 		AnnotationSecretSecure:      "yes",
 	}, "test")
@@ -301,14 +301,14 @@ func TestRegenerateInsecureSingleFieldSecureBefore(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 	viper.Set("regenerate-insecure", false)
 }
 
 func TestRegenerateInsecureMultipleField(t *testing.T) {
 	viper.Set("regenerate-insecure", true)
-	in := newPasswordTestSecret("testfield,test1,test2,test3", map[string]string{
+	in := newStringTestSecret("testfield,test1,test2,test3", map[string]string{
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 	}, "abc,def,ghi,jkl")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
@@ -320,14 +320,14 @@ func TestRegenerateInsecureMultipleField(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 	viper.Set("regenerate-insecure", false)
 }
 
 func TestRegenerateInsecureMultipleFieldSecureBefore(t *testing.T) {
 	viper.Set("regenerate-insecure", true)
-	in := newPasswordTestSecret("testfield,test1,test2,test3", map[string]string{
+	in := newStringTestSecret("testfield,test1,test2,test3", map[string]string{
 		AnnotationSecretGeneratedAt: time.Now().Format(time.RFC3339),
 		AnnotationSecretSecure:      "yes",
 	}, "abc,def,ghi,jkl")
@@ -340,13 +340,13 @@ func TestRegenerateInsecureMultipleFieldSecureBefore(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
 
-	verifyPasswordSecret(t, in, out, true)
-	verifyPasswordRegen(t, in, out)
+	verifyStringSecret(t, in, out, true)
+	verifyStringRegen(t, in, out)
 	viper.Set("regenerate-insecure", false)
 }
 
 func TestUniqueness(t *testing.T) {
-	in := newPasswordTestSecret("testfield,abc,test,abc,oops,oops", nil, "")
+	in := newStringTestSecret("testfield,abc,test,abc,oops,oops", nil, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, true)
@@ -357,8 +357,8 @@ func TestUniqueness(t *testing.T) {
 		Namespace: in.Namespace}, out))
 }
 
-func TestDefaultToPasswordGeneration(t *testing.T) {
-	in := newPasswordTestSecret("testfield", nil, "")
+func TestDefaultToStringGeneration(t *testing.T) {
+	in := newStringTestSecret("testfield", nil, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, false)
@@ -367,12 +367,12 @@ func TestDefaultToPasswordGeneration(t *testing.T) {
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
-	verifyPasswordSecret(t, in, out, true)
+	verifyStringSecret(t, in, out, true)
 }
 
-func TestPasswordTypeAnnotationDetected(t *testing.T) {
-	in := newPasswordTestSecret("testfield", map[string]string{
-		AnnotationSecretType: string(SecretTypePassword),
+func TestStringTypeAnnotationDetected(t *testing.T) {
+	in := newStringTestSecret("testfield", map[string]string{
+		AnnotationSecretType: string(SecretTypeString),
 	}, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
@@ -382,11 +382,11 @@ func TestPasswordTypeAnnotationDetected(t *testing.T) {
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
-	verifyPasswordSecret(t, in, out, true)
+	verifyStringSecret(t, in, out, true)
 }
 
 func TestGeneratedSecretsHaveCorrectLength(t *testing.T) {
-	pwd, err := generatePassword(20)
+	pwd, err := generateRandomString(20)
 
 	t.Log("generated", pwd)
 
@@ -395,13 +395,13 @@ func TestGeneratedSecretsHaveCorrectLength(t *testing.T) {
 	}
 
 	if len(pwd) != 20 {
-		t.Error("password length", "expected", 20, "got", len(pwd))
+		t.Error("string length", "expected", 20, "got", len(pwd))
 	}
 }
 
 func TestGeneratedSecretsAreRandom(t *testing.T) {
-	one, errOne := generatePassword(32)
-	two, errTwo := generatePassword(32)
+	one, errOne := generateRandomString(32)
+	two, errTwo := generateRandomString(32)
 
 	if errOne != nil {
 		t.Error(errOne)
@@ -411,13 +411,13 @@ func TestGeneratedSecretsAreRandom(t *testing.T) {
 	}
 
 	if one == two {
-		t.Error("password equality", "got", one)
+		t.Error("string equality", "got", one)
 	}
 }
 
 func BenchmarkGenerateSecret(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := generatePassword(32)
+		_, err := generateRandomString(32)
 		if err != nil {
 			b.Error(err)
 		}
