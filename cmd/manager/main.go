@@ -10,6 +10,7 @@ import (
 	"os"
 	"runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -122,9 +123,10 @@ func main() {
 
 	// Set default manager options
 	options := manager.Options{
-		MapperProvider:     restMapper,
-		Namespace:          namespace,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		MapperProvider:         restMapper,
+		Namespace:              namespace,
+		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		HealthProbeBindAddress: ":8080",
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -140,6 +142,20 @@ func main() {
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "")
+		os.Exit(1)
+	}
+
+	// Add liveness probe
+	err = mgr.AddHealthzCheck("health-ping", healthz.Ping)
+	if err != nil {
+		log.Error(err, "couldn't add liveness probe")
+		os.Exit(1)
+	}
+
+	// Add readiness probe
+	err = mgr.AddReadyzCheck("ready-ping", healthz.Ping)
+	if err != nil {
+		log.Error(err, "couldn't add readiness probe")
 		os.Exit(1)
 	}
 

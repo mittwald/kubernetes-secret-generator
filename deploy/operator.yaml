@@ -20,6 +20,18 @@ spec:
           command:
             - kubernetes-secret-generator
           imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
           env:
             - name: WATCH_NAMESPACE
               valueFrom:
