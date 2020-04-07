@@ -66,7 +66,7 @@ reconciliation loop and its value will be set to `string`.
 To actually generate random string secrets, the `secret-generator.v1.mittwald.de/autogenerate` annotation is required as well.
 The value of the annotation can be a field name (or comma separated list of field names) within the secret;
 the SecretGeneratorController will pick up this annotation and add a field [or fields] 
-(`examplepw` in the example below) to the secret with a randomly generated string value.
+(`password` in the example below) to the secret with a randomly generated string value.
 
 ```yaml
 apiVersion: v1

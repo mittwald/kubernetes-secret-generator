@@ -11,7 +11,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strconv"
 	"time"
 )
 
@@ -60,15 +59,9 @@ func (sg SSHKeypairGenerator) generateData(instance *corev1.Secret) (reconcile.R
 		delete(instance.Annotations, AnnotationSecretRegenerate)
 	}
 
-	length := sshKeyLength()
-	if val, ok := instance.Annotations[AnnotationSecretLength]; ok {
-		intVal, err := strconv.Atoi(val)
-		if err != nil {
-			sg.log.Error(err, "could not parse secret length")
-			return reconcile.Result{}, err
-		}
-
-		length = intVal
+	length, err := secretLengthFromAnnotation(sshKeyLength(), instance.Annotations)
+	if err != nil {
+		return reconcile.Result{}, err
 	}
 
 	keyPair, err := generateSSHKeypair(length)
@@ -82,9 +75,9 @@ func (sg SSHKeypairGenerator) generateData(instance *corev1.Secret) (reconcile.R
 	return reconcile.Result{}, nil
 }
 
-// generates ssh private and public key
-// public key is return in authorized-keys format
-// private key is PEM encoded
+// generates ssh private and public key of given length
+// the returned public key is in authorized-keys format
+// the private key is PEM encoded
 func generateSSHKeypair(length int) (SSHKeypair, error) {
 	key, err := rsa.GenerateKey(rand.Reader, length)
 	if err != nil {
