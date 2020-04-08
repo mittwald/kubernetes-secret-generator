@@ -3,12 +3,14 @@ module github.com/mittwald/kubernetes-secret-generator
 go 1.13
 
 require (
+	github.com/go-logr/logr v0.1.0
 	github.com/google/uuid v1.1.1
 	github.com/imdario/mergo v0.3.8
 	github.com/operator-framework/operator-sdk v0.16.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.4.0
+	golang.org/x/crypto v0.0.0-20191028145041-f83a4685e152
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v12.0.0+incompatible

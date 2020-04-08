@@ -62,6 +62,7 @@ func main() {
 
 	pflag.Bool("regenerate-insecure", false, "Set this to automatically regenerate secrets that were generated with an non-cryptographically secure PRNG.")
 	pflag.Int("secret-length", 40, "Secret length")
+	pflag.Int("ssh-key-length", 2048, "Default length of SSH Keys")
 
 	pflag.Parse()
 
@@ -81,6 +82,10 @@ func main() {
 
 	if viper.GetInt("secret-length") == 0 {
 		panic(fmt.Errorf("parameter secret-length is set to 0"))
+	}
+
+	if viper.GetInt("ssh-key-length") == 0 {
+		panic(fmt.Errorf("parameter ssh-key-length is set to 0"))
 	}
 
 	// Use a zap logr.Logger implementation. If none of the zap
