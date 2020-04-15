@@ -8,6 +8,6 @@ description: Controller for automatically creating random secret values
 # https://github.com/mittwald/helm-charts/blob/master/README.md#limitations
 #type: application
 
-version: 3.0.0
+version: 
 
-appVersion: v3.0.0
+appVersion: 
