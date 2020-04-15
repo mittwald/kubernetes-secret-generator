@@ -28,6 +28,21 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: {{ toYaml .Values.args | nindent 12 }}
+          ports:
+            - containerPort: 8080
+              name: healthcheck
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthcheck
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: healthcheck
+            initialDelaySeconds: 3
+            periodSeconds: 3
           env:
             - name: WATCH_NAMESPACE
               value: {{ .Values.watchNamespace }}
@@ -53,5 +68,5 @@ spec:
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
-    {{- toYaml . | nindent 8 }}
+  {{- toYaml . | nindent 8 }}
   {{- end }}
