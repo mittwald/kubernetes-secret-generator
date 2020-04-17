@@ -29,10 +29,10 @@ git clone "https://${GIT_REPOSITORY}" "${TMP_DIR}"
 cd "${TMP_DIR}"
 
 ## replace appVersion
-sed -i "s#appVersion:.*#appVersion: ${TRAVIS_TAG}#g" "${CHART_YAML}"
+sed -i "s#appVersion:.*#appVersion: ${TAG}#g" "${CHART_YAML}"
 
 ## replace chart version with current tag without 'v'-prefix
-sed -i "s#version:.*#version: ${TRAVIS_TAG/v/}#g" "${CHART_YAML}"
+sed -i "s#version:.*#version: ${TAG/v/}#g" "${CHART_YAML}"
 
 ## useful for debugging purposes
 git status
@@ -47,7 +47,7 @@ git add -A
 git status
 
 ## stage changes
-git commit -m "Bump appVersion to '${TRAVIS_TAG}' and version to '${TRAVIS_TAG/v/}'"
+git commit -m "Bump appVersion to '${TAG}' and version to '${TAG/v/}'"
 
 ## rebase
 git pull --rebase publisher master
