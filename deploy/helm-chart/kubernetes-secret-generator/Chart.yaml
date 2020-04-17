@@ -1,13 +1,9 @@
-# apiVersion will be set to v2 as soon as Github Workflows supports Helmv2 Charts
-# https://github.com/mittwald/helm-charts/blob/master/README.md#limitations
-apiVersion: v1
+apiVersion: v2
 name: kubernetes-secret-generator
 description: Controller for automatically creating random secret values
 
-# type will be set to soon as Github Workflows supports Helmv2 Charts
-# https://github.com/mittwald/helm-charts/blob/master/README.md#limitations
-#type: application
+type: application
 
-version: 
+version: 3.0.1
 
-appVersion: 
+appVersion: v3.0.1
