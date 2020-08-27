@@ -131,7 +131,7 @@ data:
 
 ### Ingress Basic Auth
 
-To generate SSH Key Pairs, the `secret-generator.v1.mittwald.de/type` annotation **has** to be present on the kubernetes secret object.
+To generate Ingress Basic Auth credentials, the `secret-generator.v1.mittwald.de/type` annotation **has** to be present on the kubernetes secret object.
 
 The operator will then add three keys to the secret object.
 The ingress will interpret the `auth` key as a htpasswd entry. This entry contains the username, and the hashed generated password for the user.
