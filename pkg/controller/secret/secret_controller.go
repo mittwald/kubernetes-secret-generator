@@ -125,6 +125,10 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 		generator = StringGenerator{
 			log: reqLogger.WithValues("type", SecretTypeString),
 		}
+	case SecretTypeBasicAuth:
+		generator = BasicAuthGenerator{
+			log: reqLogger.WithValues("type", SecretTypeBasicAuth),
+		}
 	}
 
 	res, err := generator.generateData(desired)
