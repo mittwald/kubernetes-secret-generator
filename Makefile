@@ -34,7 +34,7 @@ fmt:
 .PHONY: kind
 kind: ## Create a kind cluster to test against
 	kind create cluster --name kind-k8s-secret-generator
-	kind get kubeconfig --internal --name kind-k8s-secret-generator | tee ${KUBECONFIG}
+	kind get kubeconfig --name kind-k8s-secret-generator | tee ${KUBECONFIG}
 
 .PHONY: build
 build:

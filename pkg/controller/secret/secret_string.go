@@ -16,7 +16,7 @@ type StringGenerator struct {
 }
 
 func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Result, error) {
-	toGenerate := instance.Annotations[AnnotationSecretAutoGenerate] // won't generate anything if annotation is not set
+	toGenerate := instance.Annotations[AnnotationSecretAutoGenerate]
 
 	genKeys := strings.Split(toGenerate, ",")
 
@@ -55,7 +55,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 
 		value, err := generateRandomString(length)
 		if err != nil {
-			pg.log.Error(err, "could not generate new instance")
+			pg.log.Error(err, "could not generate new random string")
 			return reconcile.Result{RequeueAfter: time.Second * 30}, err
 		}
 

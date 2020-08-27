@@ -13,6 +13,7 @@ const (
 	AnnotationSecretSecure          = "secret-generator.v1.mittwald.de/secure"
 	AnnotationSecretType            = "secret-generator.v1.mittwald.de/type"
 	AnnotationSecretLength          = "secret-generator.v1.mittwald.de/length"
+	AnnotationBasicAuthUsername     = "secret-generator.v1.mittwald.de/basic-auth-username"
 )
 
 type SecretType string
@@ -20,12 +21,14 @@ type SecretType string
 const (
 	SecretTypeString     SecretType = "string"
 	SecretTypeSSHKeypair SecretType = "ssh-keypair"
+	SecretTypeBasicAuth  SecretType = "basic-auth"
 )
 
 func (st SecretType) Validate() error {
 	switch st {
 	case SecretTypeString,
-		SecretTypeSSHKeypair:
+		SecretTypeSSHKeypair,
+		SecretTypeBasicAuth:
 		return nil
 	}
 	return fmt.Errorf("%s is not a valid secret type", st)

@@ -129,6 +129,41 @@ data:
   ssh-privatekey: LS0tLS1CRUdJTi...
 ```
 
+### Ingress Basic Auth
+
+To generate Ingress Basic Auth credentials, the `secret-generator.v1.mittwald.de/type` annotation **has** to be present on the kubernetes secret object.
+
+The operator will then add three keys to the secret object.
+The ingress will interpret the `auth` key as a htpasswd entry. This entry contains the username, and the hashed generated password for the user.
+The operator also stores the username and cleartext password in the `username` and `password` keys.
+
+If a username other than `admin` is desired, it can be specified using the `secret-generator.v1.mittwald.de/basic-auth-username` annotation.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    secret-generator.v1.mittwald.de/type: basic-auth
+data: {}
+```
+
+after reconciliation:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    secret-generator.v1.mittwald.de/type: basic-auth
+    secret-generator.v1.mittwald.de/autogenerate-generated-at: "2020-04-03T14:07:47+02:00"
+type: Opaque
+data:
+  username: admin
+  password: test123
+  auth: "admin:PASSWORD_HASH"
+```
+
 ## Operational tasks
 
 -   Regenerate all automatically generated secrets:
