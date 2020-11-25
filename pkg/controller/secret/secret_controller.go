@@ -162,12 +162,12 @@ func secretLengthFromAnnotation(fallback int, annotations map[string]string) (in
 	byteLen := false
 
 	if val, ok := annotations[AnnotationSecretLength]; ok {
-
-		if strings.HasSuffix(val, "B") {
+	val = strings.ToLower(val)
+		if strings.HasSuffix(val, byteSuffix) {
 			byteLen = true
 		}
-		intVal, err := strconv.Atoi(strings.TrimSuffix(val, "B"))
-		
+		intVal, err := strconv.Atoi(strings.TrimSuffix(val, byteSuffix))
+
 
 		if err != nil {
 			return 0, false, err

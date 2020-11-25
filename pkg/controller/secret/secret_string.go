@@ -16,6 +16,7 @@ import (
 type StringGenerator struct {
 	log logr.Logger
 }
+const byteSuffix = "b"
 
 func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Result, error) {
 	toGenerate := instance.Annotations[AnnotationSecretAutoGenerate]
