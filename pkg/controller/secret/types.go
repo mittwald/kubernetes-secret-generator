@@ -13,7 +13,6 @@ const (
 	AnnotationSecretSecure          = "secret-generator.v1.mittwald.de/secure"
 	AnnotationSecretType            = "secret-generator.v1.mittwald.de/type"
 	AnnotationSecretLength          = "secret-generator.v1.mittwald.de/length"
-	AnnotationSecretLengthB         = "secret-generator.v1.mittwald.de/lengthB"
 	AnnotationBasicAuthUsername     = "secret-generator.v1.mittwald.de/basic-auth-username"
 	AnnotationSecretEncoding        = "secret-generator.v1.mittwald.de/encoding"
 )

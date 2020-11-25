@@ -28,9 +28,6 @@ func secretLength() int {
 	return viper.GetInt("secret-length")
 }
 
-func secretLengthB() int {
-	return viper.GetInt("secret-length-b")
-}
 
 func secretEncoding() string {
 	return viper.GetString("secret-encoding")
@@ -159,28 +156,25 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 	return reconcile.Result{}, nil
 }
 
-func secretLengthFromAnnotation(fallback int, annotations map[string]string) (int, error) {
+func secretLengthFromAnnotation(fallback int, annotations map[string]string) (int, bool, error) {
 	l := fallback
+	byteLen := false
+	var intVal int
+	var err error
 	if val, ok := annotations[AnnotationSecretLength]; ok {
-		intVal, err := strconv.Atoi(val)
-		if err != nil {
-			return 0, err
+		if val[len(val)-1:] == "B" {
+			byteLen = true
+			intVal, err = strconv.Atoi(val[:len(val)-1])
+		} else {
+			intVal, err = strconv.Atoi(val)
 		}
-		l = intVal
-	}
-	return l, nil
-}
 
-func secretLengthBFromAnnotation(fallback int, annotations map[string]string) (int, error) {
-	l := fallback
-	if val, ok := annotations[AnnotationSecretLengthB]; ok {
-		intVal, err := strconv.Atoi(val)
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 		l = intVal
 	}
-	return l, nil
+	return l, byteLen, nil
 }
 
 func secretEncodingFromAnnotation(fallback string, annotations map[string]string) (string, error) {

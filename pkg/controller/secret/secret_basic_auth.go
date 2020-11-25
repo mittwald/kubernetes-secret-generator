@@ -1,7 +1,6 @@
 package secret
 
 import (
-	"fmt"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -35,7 +34,7 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 		username = "admin"
 	}
 
-	length, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
+	length, byteLen, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -45,18 +44,7 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	lengthB, err := secretLengthBFromAnnotation(secretLengthB(), instance.Annotations)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	byteLength := false
-	if lengthB >0 {
-		fmt.Println("Raw length")
-		byteLength = true
-	}
-
-	password, err := generateRandomString(length, encoding, byteLength)
+	password, err := generateRandomString(length, encoding, byteLen)
 	if err != nil {
 		bg.log.Error(err, "could not generate new random string")
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err

@@ -41,15 +41,11 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		}
 	}
 
-	length, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
+	length, byteLen, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	lengthB, err := secretLengthBFromAnnotation(secretLengthB(), instance.Annotations)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
 
 	encoding, err := secretEncodingFromAnnotation(secretEncoding(), instance.Annotations)
 	if err != nil {
@@ -68,11 +64,6 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		//If B suffix was used for length annotation,
 		//only use length for input byte sequence
 		//and not to slice output string
-		byteLength := false
-		if lengthB > 0 {
-			length = lengthB
-			byteLength = true
-		}
 			if encoding == "raw"{
 			value, err := generateRandomStringRaw(length)
 			if err != nil {
@@ -83,7 +74,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 
 			pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding",encoding)
 		} else {
-			value, err := generateRandomString(length, encoding, byteLength)
+			value, err := generateRandomString(length, encoding, byteLen)
 			if err != nil {
 				pg.log.Error(err, "could not generate new random string")
 				return reconcile.Result{RequeueAfter: time.Second * 30}, err

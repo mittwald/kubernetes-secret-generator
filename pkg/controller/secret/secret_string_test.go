@@ -80,7 +80,7 @@ func verifyStringSecret(t *testing.T, in, out *corev1.Secret, secure bool) {
 }
 
 func desiredLength(s *corev1.Secret) int {
-	res, err := secretLengthFromAnnotation(secretLength(), s.Annotations)
+	res, _, err := secretLengthFromAnnotation(secretLength(), s.Annotations)
 	if err != nil {
 		res = secretLength()
 	}
