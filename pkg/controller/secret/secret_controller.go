@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -159,21 +160,20 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 func secretLengthFromAnnotation(fallback int, annotations map[string]string) (int, bool, error) {
 	l := fallback
 	byteLen := false
-	var intVal int
-	var err error
+
 	if val, ok := annotations[AnnotationSecretLength]; ok {
-		if val[len(val)-1:] == "B" {
+
+		if strings.HasSuffix(val, "B") {
 			byteLen = true
-			intVal, err = strconv.Atoi(val[:len(val)-1])
-		} else {
-			intVal, err = strconv.Atoi(val)
 		}
+		intVal, err := strconv.Atoi(strings.TrimSuffix(val, "B"))
+		
 
 		if err != nil {
 			return 0, false, err
 		}
 		l = intVal
-	}
+    }
 	return l, byteLen, nil
 }
 
