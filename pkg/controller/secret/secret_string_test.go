@@ -3,6 +3,7 @@ package secret
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"github.com/imdario/mergo"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -413,7 +414,7 @@ func TestStringLengthFromAnnotation(t *testing.T) {
 }
 
 func TestGeneratedSecretsHaveCorrectLength(t *testing.T) {
-	pwd, err := generateRandomString(20)
+	pwd, err := generateRandomString(20, "base64", false)
 
 	t.Log("generated", pwd)
 
@@ -426,9 +427,27 @@ func TestGeneratedSecretsHaveCorrectLength(t *testing.T) {
 	}
 }
 
+func TestGeneratedSecretsHaveCorrectByteLength(t *testing.T) {
+	pwd, err := generateRandomString(20, "base64", true)
+
+	t.Log("generated", pwd)
+
+	if err != nil {
+		t.Error(err)
+	}
+	val, err := base64.StdEncoding.DecodeString(pwd)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(val) != 20 {
+		t.Error("string length", "expected", 20, "got", len(pwd))
+	}
+}
+
+
 func TestGeneratedSecretsAreRandom(t *testing.T) {
-	one, errOne := generateRandomString(32)
-	two, errTwo := generateRandomString(32)
+	one, errOne := generateRandomString(32, "base64", false)
+	two, errTwo := generateRandomString(32, "base64", false)
 
 	if errOne != nil {
 		t.Error(errOne)
@@ -444,7 +463,7 @@ func TestGeneratedSecretsAreRandom(t *testing.T) {
 
 func BenchmarkGenerateSecret(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := generateRandomString(32)
+		_, err := generateRandomString(32, "base64", false)
 		if err != nil {
 			b.Error(err)
 		}

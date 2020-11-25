@@ -28,6 +28,14 @@ func secretLength() int {
 	return viper.GetInt("secret-length")
 }
 
+func secretLengthB() int {
+	return viper.GetInt("secret-length-b")
+}
+
+func secretEncoding() string {
+	return viper.GetString("secret-encoding")
+}
+
 func sshKeyLength() int {
 	return viper.GetInt("ssh-key-length")
 }
@@ -159,6 +167,26 @@ func secretLengthFromAnnotation(fallback int, annotations map[string]string) (in
 			return 0, err
 		}
 		l = intVal
+	}
+	return l, nil
+}
+
+func secretLengthBFromAnnotation(fallback int, annotations map[string]string) (int, error) {
+	l := fallback
+	if val, ok := annotations[AnnotationSecretLengthB]; ok {
+		intVal, err := strconv.Atoi(val)
+		if err != nil {
+			return 0, err
+		}
+		l = intVal
+	}
+	return l, nil
+}
+
+func secretEncodingFromAnnotation(fallback string, annotations map[string]string) (string, error) {
+	l := fallback
+	if val, ok := annotations[AnnotationSecretEncoding]; ok {
+		l = val
 	}
 	return l, nil
 }

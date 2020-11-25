@@ -63,8 +63,9 @@ func main() {
 
 	pflag.Bool("regenerate-insecure", false, "Set this to automatically regenerate secrets that were generated with an non-cryptographically secure PRNG.")
 	pflag.Int("secret-length", 40, "Secret length")
+	pflag.Int("secret-length-b", -1, "Secret length in regard to input bytes")
 	pflag.Int("ssh-key-length", 2048, "Default length of SSH Keys")
-
+	pflag.String("secret-encoding", "base64", "Encoding for secrets")
 	pflag.Parse()
 
 	// Import flags into viper and bind them to env vars
@@ -82,6 +83,9 @@ func main() {
 	viper.AutomaticEnv()
 
 	if viper.GetInt("secret-length") == 0 {
+		panic(fmt.Errorf("parameter secret-length is set to 0"))
+	}
+	if viper.GetInt("secret-length-b") == 0 {
 		panic(fmt.Errorf("parameter secret-length is set to 0"))
 	}
 
