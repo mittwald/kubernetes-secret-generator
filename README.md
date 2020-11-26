@@ -64,6 +64,15 @@ This operator is capable of generating secure random strings and ssh keypair sec
 The type of secret to be generated can be specified by the `secret-generator.v1.mittwald.de/type` annotation.
 This annotation can be added to any Kubernetes secret object in the operators `watchNamespace`.
 
+The encoding of the secret can be specified by the `secret-generator.v1.mittwald.de/encoding` annotation.
+Available encodings are `base64`, `base64url`, `base32`, `hex` and `raw`, with `raw` returning the unencoded byte sequence
+that was generated. If the annotation is not specified, `base64` will be used.
+
+The length of the generated secret can be specified by the `secret-generator.v1.mittwald.de/length` annotation.
+By default this length refers to the length of the generated string, and not the length of the byte sequence encoded by it. 
+The suffix "B" or "b" can be used to indicate that the provided value should refer to the encoded byte sequence instead.
+
+
 ### Secure Random Strings
 
 By default, the operator will generate secure random strings. If the type annotation is not present, it will be added after the first
