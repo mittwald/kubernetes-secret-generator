@@ -65,7 +65,11 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		//If B suffix was used for length annotation,
 		//only use length for input byte sequence
 		//and not to slice output string
-		return pg.generateRandomSecret(secretConfig{instance, key, length, byteLen})
+		err := pg.generateRandomSecret(secretConfig{instance, key, length, byteLen})
+		if err != nil {
+			pg.log.Error(err, "could not generate new random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
 	}
 	pg.log.Info("generated secrets", "count", generatedCount)
 
@@ -77,7 +81,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 	return reconcile.Result{}, nil
 }
 
-func (pg StringGenerator) generateRandomSecret(conf secretConfig) (reconcile.Result, error){
+func (pg StringGenerator) generateRandomSecret(conf secretConfig) error{
 	key := conf.key
 	instance := conf.instance
 	length := conf.length
@@ -85,13 +89,12 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) (reconcile.Res
 
 	encoding, err := secretEncodingFromAnnotation(secretEncoding(), instance.Annotations)
 	if err != nil {
-		return reconcile.Result{}, err
+		return err
 	}
 	if encoding == "raw"{
 		value, err := generateRandomStringRaw(length)
 		if err != nil {
-			pg.log.Error(err, "could not generate new random string")
-			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+			return err
 		}
 		instance.Data[key] = []byte(value)
 
@@ -99,15 +102,14 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) (reconcile.Res
 	} else {
 		value, err := generateRandomString(length, encoding, byteLen)
 		if err != nil {
-			pg.log.Error(err, "could not generate new random string")
-			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+			return err
 		}
 		instance.Data[key] = []byte(value)
 
 		pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding",encoding)
 	}
 
-	return reconcile.Result{}, nil
+	return nil
 }
 
 func generateRandomString(length int, encoding string, lenBytes bool) (string, error) {
