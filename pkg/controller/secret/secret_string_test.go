@@ -396,7 +396,7 @@ func TestStringTypeAnnotationDetected(t *testing.T) {
 
 func TestStringLengthFromAnnotation(t *testing.T) {
 	in := newStringTestSecret("testfield", map[string]string{
-		AnnotationSecretType: string(SecretTypeString),
+		AnnotationSecretType:   string(SecretTypeString),
 		AnnotationSecretLength: "42",
 	}, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
@@ -435,7 +435,7 @@ func TestGeneratedSecretsHaveCorrectByteLength(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	val, err := base64.StdEncoding.DecodeString(pwd)
+	val, err := base64.StdEncoding.DecodeString(string(pwd))
 	if err != nil {
 		t.Error(err)
 	}
@@ -443,7 +443,6 @@ func TestGeneratedSecretsHaveCorrectByteLength(t *testing.T) {
 		t.Error("string length", "expected", 20, "got", len(pwd))
 	}
 }
-
 
 func TestGeneratedSecretsAreRandom(t *testing.T) {
 	one, errOne := generateRandomString(32, "base64", false)
@@ -456,7 +455,7 @@ func TestGeneratedSecretsAreRandom(t *testing.T) {
 		t.Error(errTwo)
 	}
 
-	if one == two {
+	if string(one) == string(two) {
 		t.Error("string equality", "got", one)
 	}
 }
