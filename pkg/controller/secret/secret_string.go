@@ -62,9 +62,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		}
 		generatedCount++
 
-		//If B suffix was used for length annotation,
-		//only use length for input byte sequence
-		//and not to slice output string
+
 		err := pg.generateRandomSecret(secretConfig{instance, key, length, byteLen})
 		if err != nil {
 			pg.log.Error(err, "could not generate new random string")
@@ -130,6 +128,7 @@ func generateRandomString(length int, encoding string, lenBytes bool) (string, e
 	default:
 		encodedString = base64.StdEncoding.EncodeToString(b)
 	}
+	// if length was specified with B suffix, don't trim result string
 	if lenBytes {
 		return encodedString, nil
 	} else {
