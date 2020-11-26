@@ -19,10 +19,8 @@ type StringGenerator struct {
 
 type secretConfig struct {
 	instance *corev1.Secret
-	generator StringGenerator
 	key string
 	length int
-	encoding string
 	byteLen bool
 }
 
@@ -55,12 +53,6 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-
-	encoding, err := secretEncodingFromAnnotation(secretEncoding(), instance.Annotations)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
 	generatedCount := 0
 	for _, key := range genKeys {
 		if len(instance.Data[key]) != 0 && !contains(regenKeys, key) {
@@ -73,7 +65,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		//If B suffix was used for length annotation,
 		//only use length for input byte sequence
 		//and not to slice output string
-		return generateRandomSecret(secretConfig{instance, pg, key, length, encoding, byteLen})
+		return pg.generateRandomSecret(secretConfig{instance, key, length, byteLen})
 	}
 	pg.log.Info("generated secrets", "count", generatedCount)
 
@@ -82,18 +74,19 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		instance.Annotations[AnnotationSecretSecure] = "yes"
 	}
 
-
-
 	return reconcile.Result{}, nil
 }
 
-func generateRandomSecret(conf secretConfig) (reconcile.Result, error){
-	pg := conf.generator
-	encoding := conf.encoding
+func (pg StringGenerator) generateRandomSecret(conf secretConfig) (reconcile.Result, error){
 	key := conf.key
 	instance := conf.instance
 	length := conf.length
 	byteLen := conf.byteLen
+
+	encoding, err := secretEncodingFromAnnotation(secretEncoding(), instance.Annotations)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	if encoding == "raw"{
 		value, err := generateRandomStringRaw(length)
 		if err != nil {
@@ -113,6 +106,7 @@ func generateRandomSecret(conf secretConfig) (reconcile.Result, error){
 
 		pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding",encoding)
 	}
+
 	return reconcile.Result{}, nil
 }
 
