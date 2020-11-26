@@ -70,7 +70,7 @@ that was generated. If the annotation is not specified, `base64` will be used.
 
 The length of the generated secret can be specified by the `secret-generator.v1.mittwald.de/length` annotation.
 By default this length refers to the length of the generated string, and not the length of the byte sequence encoded by it. 
-The suffix "B" or "b" can be used to indicate that the provided value should refer to the encoded byte sequence instead.
+The suffix `B` or `b` can be used to indicate that the provided value should refer to the encoded byte sequence instead.
 
 
 ### Secure Random Strings
