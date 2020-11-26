@@ -17,6 +17,15 @@ type StringGenerator struct {
 	log logr.Logger
 }
 
+type secretConfig struct {
+	instance *corev1.Secret
+	generator StringGenerator
+	key string
+	length int
+	encoding string
+	byteLen bool
+}
+
 func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Result, error) {
 	toGenerate := instance.Annotations[AnnotationSecretAutoGenerate]
 
@@ -64,26 +73,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		//If B suffix was used for length annotation,
 		//only use length for input byte sequence
 		//and not to slice output string
-			if encoding == "raw"{
-			value, err := generateRandomStringRaw(length)
-			if err != nil {
-				pg.log.Error(err, "could not generate new random string")
-				return reconcile.Result{RequeueAfter: time.Second * 30}, err
-			}
-			instance.Data[key] = []byte(value)
-
-			pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding",encoding)
-		} else {
-			value, err := generateRandomString(length, encoding, byteLen)
-			if err != nil {
-				pg.log.Error(err, "could not generate new random string")
-				return reconcile.Result{RequeueAfter: time.Second * 30}, err
-			}
-			instance.Data[key] = []byte(value)
-
-			pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding",encoding)
-		}
-
+		return generateRandomSecret(secretConfig{instance, pg, key, length, encoding, byteLen})
 	}
 	pg.log.Info("generated secrets", "count", generatedCount)
 
@@ -92,6 +82,37 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		instance.Annotations[AnnotationSecretSecure] = "yes"
 	}
 
+
+
+	return reconcile.Result{}, nil
+}
+
+func generateRandomSecret(conf secretConfig) (reconcile.Result, error){
+	pg := conf.generator
+	encoding := conf.encoding
+	key := conf.key
+	instance := conf.instance
+	length := conf.length
+	byteLen := conf.byteLen
+	if encoding == "raw"{
+		value, err := generateRandomStringRaw(length)
+		if err != nil {
+			pg.log.Error(err, "could not generate new random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
+		instance.Data[key] = []byte(value)
+
+		pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding",encoding)
+	} else {
+		value, err := generateRandomString(length, encoding, byteLen)
+		if err != nil {
+			pg.log.Error(err, "could not generate new random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
+		instance.Data[key] = []byte(value)
+
+		pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding",encoding)
+	}
 	return reconcile.Result{}, nil
 }
 

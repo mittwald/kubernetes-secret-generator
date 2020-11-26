@@ -19,8 +19,10 @@ import (
 	"time"
 )
 
-var log = logf.Log.WithName("controller_secret")
 const byteSuffix = "b"
+
+var log = logf.Log.WithName("controller_secret")
+
 
 func regenerateInsecure() bool {
 	return viper.GetBool("regenerate-insecure")
