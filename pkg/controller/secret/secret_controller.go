@@ -138,6 +138,7 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 			log: reqLogger.WithValues("type", SecretTypeBasicAuth),
 		}
 	default:
+		// default case to prevent potential nil-pointer
 		reqLogger.Error(errstd.New("SecretTypeNotSpecified"), "Secret type was not specified")
 		return reconcile.Result{Requeue: true}, errstd.New("SecretTypeNotSpecified")
 	}
