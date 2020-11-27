@@ -59,7 +59,7 @@ func (sg SSHKeypairGenerator) generateData(instance *corev1.Secret) (reconcile.R
 		delete(instance.Annotations, AnnotationSecretRegenerate)
 	}
 
-	length, err := secretLengthFromAnnotation(sshKeyLength(), instance.Annotations)
+	length, _, err := secretLengthFromAnnotation(sshKeyLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

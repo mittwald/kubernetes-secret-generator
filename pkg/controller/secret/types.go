@@ -14,6 +14,7 @@ const (
 	AnnotationSecretType            = "secret-generator.v1.mittwald.de/type"
 	AnnotationSecretLength          = "secret-generator.v1.mittwald.de/length"
 	AnnotationBasicAuthUsername     = "secret-generator.v1.mittwald.de/basic-auth-username"
+	AnnotationSecretEncoding        = "secret-generator.v1.mittwald.de/encoding"
 )
 
 type SecretType string

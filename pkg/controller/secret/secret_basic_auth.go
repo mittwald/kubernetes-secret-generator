@@ -34,12 +34,17 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 		username = "admin"
 	}
 
-	length, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
+	length, byteLen, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	password, err := generateRandomString(length)
+	encoding, err := secretEncodingFromAnnotation(secretEncoding(), instance.Annotations)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	password, err := generateRandomString(length, encoding, byteLen)
 	if err != nil {
 		bg.log.Error(err, "could not generate new random string")
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err

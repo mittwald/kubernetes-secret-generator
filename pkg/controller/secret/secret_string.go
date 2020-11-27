@@ -2,7 +2,9 @@ package secret
 
 import (
 	"crypto/rand"
+	"encoding/base32"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -13,6 +15,13 @@ import (
 
 type StringGenerator struct {
 	log logr.Logger
+}
+
+type secretConfig struct {
+	instance     *corev1.Secret
+	key          string
+	length       int
+	isByteLength bool
 }
 
 func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Result, error) {
@@ -39,7 +48,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		}
 	}
 
-	length, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
+	length, isByteLength, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -53,15 +62,11 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		}
 		generatedCount++
 
-		value, err := generateRandomString(length)
+		err := pg.generateRandomSecret(secretConfig{instance, key, length, isByteLength})
 		if err != nil {
 			pg.log.Error(err, "could not generate new random string")
 			return reconcile.Result{RequeueAfter: time.Second * 30}, err
 		}
-
-		instance.Data[key] = []byte(value)
-
-		pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key)
 	}
 	pg.log.Info("generated secrets", "count", generatedCount)
 
@@ -73,14 +78,54 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 	return reconcile.Result{}, nil
 }
 
-func generateRandomString(length int) (string, error) {
+func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
+	key := conf.key
+	instance := conf.instance
+	length := conf.length
+	isByteLength := conf.isByteLength
+
+	encoding, err := secretEncodingFromAnnotation(secretEncoding(), instance.Annotations)
+	if err != nil {
+		return err
+	}
+	value, err := generateRandomString(length, encoding, isByteLength)
+	if err != nil {
+		return err
+	}
+	instance.Data[key] = []byte(value)
+
+	pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding", encoding)
+
+	return nil
+}
+
+func generateRandomString(length int, encoding string, lenBytes bool) ([]byte, error) {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
 	if err != nil {
-		return "", err
+		return []byte{}, err
 	}
 
-	return base64.StdEncoding.EncodeToString(b)[0:length], nil
+	var encodedString string
+	switch encoding {
+	case "base64url":
+		encodedString = base64.URLEncoding.EncodeToString(b)
+	case "raw":
+		return b, nil
+	case "base32":
+		encodedString = base32.StdEncoding.EncodeToString(b)
+	case "hex":
+		encodedString = hex.EncodeToString(b)
+	default:
+		encodedString = base64.StdEncoding.EncodeToString(b)
+	}
+	// if length was specified with B suffix, don't trim result string
+	if lenBytes {
+		return []byte(encodedString), nil
+	} else {
+		return []byte(encodedString[0:length]), nil
+	}
+
 }
 
 // ensure elements in input array are unique

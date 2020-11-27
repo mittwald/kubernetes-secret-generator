@@ -2,6 +2,7 @@ package secret
 
 import (
 	"context"
+	errstd "errors"
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -15,8 +16,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"strconv"
+	"strings"
 	"time"
 )
+
+const byteSuffix = "b"
 
 var log = logf.Log.WithName("controller_secret")
 
@@ -26,6 +30,10 @@ func regenerateInsecure() bool {
 
 func secretLength() int {
 	return viper.GetInt("secret-length")
+}
+
+func secretEncoding() string {
+	return viper.GetString("secret-encoding")
 }
 
 func sshKeyLength() int {
@@ -129,6 +137,10 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 		generator = BasicAuthGenerator{
 			log: reqLogger.WithValues("type", SecretTypeBasicAuth),
 		}
+	default:
+		// default case to prevent potential nil-pointer
+		reqLogger.Error(errstd.New("SecretTypeNotSpecified"), "Secret type was not specified")
+		return reconcile.Result{Requeue: true}, errstd.New("SecretTypeNotSpecified")
 	}
 
 	res, err := generator.generateData(desired)
@@ -151,14 +163,28 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 	return reconcile.Result{}, nil
 }
 
-func secretLengthFromAnnotation(fallback int, annotations map[string]string) (int, error) {
+func secretLengthFromAnnotation(fallback int, annotations map[string]string) (int, bool, error) {
 	l := fallback
+	isByteLength := false
+
 	if val, ok := annotations[AnnotationSecretLength]; ok {
-		intVal, err := strconv.Atoi(val)
+		val = strings.ToLower(val)
+		if strings.HasSuffix(val, byteSuffix) {
+			isByteLength = true
+		}
+		intVal, err := strconv.Atoi(strings.TrimSuffix(val, byteSuffix))
+
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 		l = intVal
 	}
-	return l, nil
+	return l, isByteLength, nil
+}
+
+func secretEncodingFromAnnotation(fallback string, annotations map[string]string) (string, error) {
+	if val, ok := annotations[AnnotationSecretEncoding]; ok {
+		return val, nil
+	}
+	return fallback, nil
 }
