@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"os"
 	"runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -18,6 +20,8 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
+	clientV1alpha1 "github.com/mittwald/kubernetes-secret-generator/pkg/apis/clientset/v1alpha1"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller"
 	"github.com/mittwald/kubernetes-secret-generator/version"
 
@@ -141,7 +145,7 @@ func main() {
 		options.Namespace = ""
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
 	}
-
+	v1alpha1.AddToScheme(scheme.Scheme)
 	// Create a new manager to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, options)
 	if err != nil {
@@ -177,6 +181,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	clientSet, err := clientV1alpha1.NewForConfig(cfg)
+	if err != nil {
+		panic(err)
+	}
+	passwords, err := clientSet.Passwords("default").List(metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(passwords.Items[0].Spec.Length)
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 
