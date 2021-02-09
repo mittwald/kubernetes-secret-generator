@@ -185,7 +185,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	passwords, err := clientSet.Passwords("default").List(metav1.ListOptions{})
+	passwords, err := clientSet.Strings("default").List(metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
