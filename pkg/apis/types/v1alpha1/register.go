@@ -20,6 +20,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&String{},
 		&StringList{},
+		&BasicAuth{},
+		&BasicAuthList{},
+		&SSHKeyPair{},
+		&SSHKeyPairList{},
 	)
 
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)

@@ -185,11 +185,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	passwords, err := clientSet.Strings("default").List(metav1.ListOptions{})
+	_, err = clientSet.Strings("default").List(metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(passwords.Items[0].Spec.Length)
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 

@@ -34,7 +34,7 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 		username = "admin"
 	}
 
-	length, byteLen, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
+	length, byteLen, err := secretLengthFromAnnotation(SecretLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -44,7 +44,7 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	password, err := generateRandomString(length, encoding, byteLen)
+	password, err := GenerateRandomString(length, encoding, byteLen)
 	if err != nil {
 		bg.log.Error(err, "could not generate new random string")
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err

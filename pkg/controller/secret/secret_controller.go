@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const byteSuffix = "b"
+const ByteSuffix = "b"
 
 var log = logf.Log.WithName("controller_secret")
 
@@ -28,7 +28,7 @@ func regenerateInsecure() bool {
 	return viper.GetBool("regenerate-insecure")
 }
 
-func secretLength() int {
+func SecretLength() int {
 	return viper.GetInt("secret-length")
 }
 
@@ -169,10 +169,10 @@ func secretLengthFromAnnotation(fallback int, annotations map[string]string) (in
 
 	if val, ok := annotations[AnnotationSecretLength]; ok {
 		val = strings.ToLower(val)
-		if strings.HasSuffix(val, byteSuffix) {
+		if strings.HasSuffix(val, ByteSuffix) {
 			isByteLength = true
 		}
-		intVal, err := strconv.Atoi(strings.TrimSuffix(val, byteSuffix))
+		intVal, err := strconv.Atoi(strings.TrimSuffix(val, ByteSuffix))
 
 		if err != nil {
 			return 0, false, err

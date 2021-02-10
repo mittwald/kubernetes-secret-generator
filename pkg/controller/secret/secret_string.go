@@ -48,7 +48,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		}
 	}
 
-	length, isByteLength, err := secretLengthFromAnnotation(secretLength(), instance.Annotations)
+	length, isByteLength, err := secretLengthFromAnnotation(SecretLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -88,7 +88,7 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
 	if err != nil {
 		return err
 	}
-	value, err := generateRandomString(length, encoding, isByteLength)
+	value, err := GenerateRandomString(length, encoding, isByteLength)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
 	return nil
 }
 
-func generateRandomString(length int, encoding string, lenBytes bool) ([]byte, error) {
+func GenerateRandomString(length int, encoding string, lenBytes bool) ([]byte, error) {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
 	if err != nil {

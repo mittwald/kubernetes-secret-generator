@@ -64,7 +64,7 @@ func (sg SSHKeypairGenerator) generateData(instance *corev1.Secret) (reconcile.R
 		return reconcile.Result{}, err
 	}
 
-	keyPair, err := generateSSHKeypair(length)
+	keyPair, err := GenerateSSHKeypair(length)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
@@ -78,7 +78,7 @@ func (sg SSHKeypairGenerator) generateData(instance *corev1.Secret) (reconcile.R
 // generates ssh private and public key of given length
 // the returned public key is in authorized-keys format
 // the private key is PEM encoded
-func generateSSHKeypair(length int) (SSHKeypair, error) {
+func GenerateSSHKeypair(length int) (SSHKeypair, error) {
 	key, err := rsa.GenerateKey(rand.Reader, length)
 	if err != nil {
 		return SSHKeypair{}, err

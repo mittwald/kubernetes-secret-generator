@@ -37,7 +37,7 @@ func newSSHKeypairTestSecret(t *testing.T, extraAnnotations map[string]string, i
 	}
 
 	if initialized {
-		keypair, err := generateSSHKeypair(sshKeyLength())
+		keypair, err := GenerateSSHKeypair(sshKeyLength())
 		if err != nil {
 			t.Error(err, "could not generate new ssh keypair")
 		}

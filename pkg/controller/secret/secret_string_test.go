@@ -80,9 +80,9 @@ func verifyStringSecret(t *testing.T, in, out *corev1.Secret, secure bool) {
 }
 
 func desiredLength(s *corev1.Secret) int {
-	res, _, err := secretLengthFromAnnotation(secretLength(), s.Annotations)
+	res, _, err := secretLengthFromAnnotation(SecretLength(), s.Annotations)
 	if err != nil {
-		res = secretLength()
+		res = SecretLength()
 	}
 	return res
 }
@@ -114,7 +114,7 @@ func verifyStringRegen(t *testing.T, in, out *corev1.Secret) {
 	if len(regenKeys) != 0 {
 		for _, key := range regenKeys {
 			val := out.Data[key]
-			if len(val) == 0 || len(val) != secretLength() {
+			if len(val) == 0 || len(val) != SecretLength() {
 				// check length here again, verifyStringSecret skips this for secrets that already had the generatedAt Annotation
 				t.Errorf("regenerated field has wrong length of %d", len(val))
 			}
@@ -414,7 +414,7 @@ func TestStringLengthFromAnnotation(t *testing.T) {
 }
 
 func TestGeneratedSecretsHaveCorrectLength(t *testing.T) {
-	pwd, err := generateRandomString(20, "base64", false)
+	pwd, err := GenerateRandomString(20, "base64", false)
 
 	t.Log("generated", pwd)
 
@@ -428,7 +428,7 @@ func TestGeneratedSecretsHaveCorrectLength(t *testing.T) {
 }
 
 func TestGeneratedSecretsHaveCorrectByteLength(t *testing.T) {
-	pwd, err := generateRandomString(20, "base64", true)
+	pwd, err := GenerateRandomString(20, "base64", true)
 
 	t.Log("generated", pwd)
 
@@ -445,8 +445,8 @@ func TestGeneratedSecretsHaveCorrectByteLength(t *testing.T) {
 }
 
 func TestGeneratedSecretsAreRandom(t *testing.T) {
-	one, errOne := generateRandomString(32, "base64", false)
-	two, errTwo := generateRandomString(32, "base64", false)
+	one, errOne := GenerateRandomString(32, "base64", false)
+	two, errTwo := GenerateRandomString(32, "base64", false)
 
 	if errOne != nil {
 		t.Error(errOne)
@@ -462,7 +462,7 @@ func TestGeneratedSecretsAreRandom(t *testing.T) {
 
 func BenchmarkGenerateSecret(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := generateRandomString(32, "base64", false)
+		_, err := GenerateRandomString(32, "base64", false)
 		if err != nil {
 			b.Error(err)
 		}

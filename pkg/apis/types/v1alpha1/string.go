@@ -3,8 +3,10 @@ package v1alpha1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 type StringSpec struct {
-	Length   int    `json:"length"`
-	Encoding string `json:"encoding"`
+	Length     string            `json:"length"`
+	Encoding   string            `json:"encoding"`
+	FieldNames []string          `json:"fieldNames"`
+	Data       map[string]string `json:"data"`
 }
 
 type String struct {
