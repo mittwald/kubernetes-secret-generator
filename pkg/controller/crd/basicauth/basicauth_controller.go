@@ -74,7 +74,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling Secret")
+	reqLogger.Info("Reconciling BasicAuth")
 
 	// Fetch the Secret instance
 	instance := &v1alpha1.BasicAuth{}

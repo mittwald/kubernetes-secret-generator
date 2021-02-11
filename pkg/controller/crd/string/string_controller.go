@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -73,11 +75,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling Secret")
-
+	reqLogger.Info("Reconciling String")
 	// Fetch the Secret instance
 	instance := &v1alpha1.String{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(context.Background(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -88,6 +89,24 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+	// fmt.Println("<<<<<")
+	// fmt.Println(instance.Spec.Initialized)
+	// if ok := r.IsInitialized(instance); !ok {
+	// 	fmt.Println("Jojjjjjj")
+	// 	fmt.Println(instance.Spec)
+	// 	fmt.Println(">>>>>")
+	// 	err := r.client.Update(context.TODO(), instance)
+	// 	if err != nil {
+	//
+	// 		log.Error(err, "unable to update instance", "instance", instance)
+	//
+	// 		return reconcile.Result{}, err
+	//
+	// 	}
+	//
+	// 	return reconcile.Result{}, nil
+	//
+	// }
 
 	fieldNames := instance.Spec.FieldNames
 	length := instance.Spec.Length
@@ -118,6 +137,18 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 	err = r.client.Create(context.Background(), desiredSecret)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
+
+			existing := &v1.Secret{}
+			err = r.client.Get(context.Background(), types.NamespacedName{Name: desiredSecret.Name, Namespace: desiredSecret.Namespace}, existing)
+			if err != nil {
+				return reconcile.Result{Requeue: true}, err
+			}
+			for key := range existing.Data {
+				if _, ok := desiredSecret.Data[key]; !ok {
+					desiredSecret.Data[key] = existing.Data[key]
+				}
+			}
+
 			err = r.client.Update(context.Background(), desiredSecret)
 			if err != nil {
 				return reconcile.Result{Requeue: true}, err
@@ -128,3 +159,18 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 	return reconcile.Result{}, nil
 }
+
+// func (r *ReconcileString) IsInitialized(obj metav1.Object) bool {
+// 	mycrd, ok := obj.(*v1alpha1.String)
+// 	if !ok {
+// 		fmt.Println("mr stark")
+// 		return false
+// 	}
+// 	if mycrd.Spec.Initialized {
+// 		fmt.Println("i don't feel so good")
+// 		return true
+// 	}
+// 	mycrd.Spec.Initialized = true
+// 	return false
+//
+// }

@@ -5,22 +5,21 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/spf13/viper"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
 	"os"
 	"runtime"
+	"strings"
+
+	"github.com/spf13/viper"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
-	clientV1alpha1 "github.com/mittwald/kubernetes-secret-generator/pkg/apis/clientset/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller"
 	"github.com/mittwald/kubernetes-secret-generator/version"
@@ -181,14 +180,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	clientSet, err := clientV1alpha1.NewForConfig(cfg)
-	if err != nil {
-		panic(err)
-	}
-	_, err = clientSet.Strings("default").List(metav1.ListOptions{})
-	if err != nil {
-		panic(err)
-	}
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 
