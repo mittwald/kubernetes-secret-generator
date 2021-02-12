@@ -2,6 +2,7 @@ package sshkeypair
 
 import (
 	"context"
+	"crypto/rsa"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -102,7 +103,8 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.client.Get(ctx, request.NamespacedName, existing)
 	// secret not found, create new one
 	if errors.IsNotFound(err) {
-		keyPair, err := secret.GenerateSSHKeypair(secretLength)
+		var keyPair secret.SSHKeypair
+		keyPair, err = secret.GenerateSSHKeypair(secretLength)
 
 		values[secret.SecretFieldPublicKey] = keyPair.PublicKey
 		values[secret.SecretFieldPrivateKey] = keyPair.PrivateKey
@@ -133,7 +135,8 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	if len(existingPrivateKey) > 0 && !regenerate {
 		if len(existingPublicKey) == 0 {
 			// restore public key if private key exists
-			rsaKey, err := secret.PrivateKeyFromPEM(existingPrivateKey)
+			var rsaKey *rsa.PrivateKey
+			rsaKey, err = secret.PrivateKeyFromPEM(existingPrivateKey)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
