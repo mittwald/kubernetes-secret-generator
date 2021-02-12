@@ -2,10 +2,10 @@ package basicauth
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,7 +23,7 @@ import (
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
-var log = logf.Log.WithName("controller_secret")
+var log = logf.Log.WithName("controller_basicauth_secret")
 
 // Add creates a new Secret Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -75,7 +75,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling BasicAuth")
-
+	ctx := context.TODO()
 	// Fetch the Secret instance
 	instance := &v1alpha1.BasicAuth{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -91,16 +91,64 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	username := instance.Spec.Username
+
+	if username == "" {
+		username = "admin"
+	}
+
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
+	secretType := instance.Spec.Type
+	regenerate := instance.Spec.ForceRecreate
 
 	values := make(map[string][]byte)
 
-	fmt.Println(instance.Spec)
 	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
 	if err != nil {
-
+		// TODO errorstuff
 	}
+
+	existing := &v1.Secret{}
+	err = r.client.Get(ctx, request.NamespacedName, existing)
+	if errors.IsNotFound(err) {
+		password, err := secret.GenerateRandomString(secretLength, encoding, isByteLength)
+
+		passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			reqLogger.Error(err, "could not hash random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
+		values[secret.SecretFieldBasicAuthIngress] = append([]byte(username+":"), passwordHash...)
+		values[secret.SecretFieldBasicAuthUsername] = []byte(username)
+		values[secret.SecretFieldBasicAuthPassword] = password
+
+		desiredSecret := crd.NewSecret(instance, values, secretType)
+
+		err = r.client.Create(context.Background(), desiredSecret)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				err = r.client.Update(context.Background(), desiredSecret)
+				if err != nil {
+					return reconcile.Result{Requeue: true}, err
+				}
+			} else {
+				return reconcile.Result{Requeue: true}, err
+			}
+		}
+		return reconcile.Result{}, nil
+	} else {
+		// other error occurred
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+	// secret already exists
+	existingAuth := existing.Data[secret.SecretFieldBasicAuthIngress]
+	if len(existingAuth) > 0 && !regenerate {
+		return reconcile.Result{}, nil
+	}
+
+	targetSecret := existing.DeepCopy()
 
 	password, err := secret.GenerateRandomString(secretLength, encoding, isByteLength)
 
@@ -109,22 +157,14 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 		reqLogger.Error(err, "could not hash random string")
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
-	values["auth"] = append([]byte(username+":"), passwordHash...)
-	values["username"] = []byte(username)
-	values["password"] = password
+	targetSecret.Data[secret.SecretFieldBasicAuthIngress] = append([]byte(username+":"), passwordHash...)
+	targetSecret.Data[secret.SecretFieldBasicAuthUsername] = []byte(username)
+	targetSecret.Data[secret.SecretFieldBasicAuthPassword] = password
 
-	desiredSecret := crd.NewSecret(instance, values)
-
-	err = r.client.Create(context.Background(), desiredSecret)
+	err = r.client.Update(ctx, targetSecret)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			err = r.client.Update(context.Background(), desiredSecret)
-			if err != nil {
-				return reconcile.Result{Requeue: true}, err
-			}
-		} else {
-			return reconcile.Result{Requeue: true}, err
-		}
+		return reconcile.Result{Requeue: true}, err
 	}
+
 	return reconcile.Result{}, nil
 }

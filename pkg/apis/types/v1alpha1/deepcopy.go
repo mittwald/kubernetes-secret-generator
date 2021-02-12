@@ -1,22 +1,25 @@
 package v1alpha1
 
 import (
-	"fmt"
-
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // DeepCopyInto copies all properties of this object into another object of the
 // same type that is provided as a pointer.
 func (in *String) DeepCopyInto(out *String) {
-	fmt.Println(in.Spec.Encoding)
 	out.TypeMeta = in.TypeMeta
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec = StringSpec{
-		Length:     in.Spec.Length,
-		Encoding:   in.Spec.Encoding,
-		FieldNames: in.Spec.FieldNames,
-		Data:       in.Spec.Data,
+		Length:        in.Spec.Length,
+		Encoding:      in.Spec.Encoding,
+		FieldNames:    in.Spec.FieldNames,
+		Data:          in.Spec.Data,
+		Type:          in.Spec.Type,
+		ForceRecreate: in.Spec.ForceRecreate,
+	}
+	out.Status = StringStatus{
+		State:  in.Status.State,
+		Secret: in.Status.Secret,
 	}
 }
 
@@ -50,9 +53,11 @@ func (in *BasicAuth) DeepCopyInto(out *BasicAuth) {
 	out.TypeMeta = in.TypeMeta
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec = BasicAuthSpec{
-		Length:   in.Spec.Length,
-		Username: in.Spec.Username,
-		Encoding: in.Spec.Encoding,
+		Length:        in.Spec.Length,
+		Username:      in.Spec.Username,
+		Encoding:      in.Spec.Encoding,
+		Type:          in.Spec.Type,
+		ForceRecreate: in.Spec.ForceRecreate,
 	}
 }
 
@@ -86,7 +91,9 @@ func (in *SSHKeyPair) DeepCopyInto(out *SSHKeyPair) {
 	out.TypeMeta = in.TypeMeta
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec = SSHKeyPairSpec{
-		Length: in.Spec.Length,
+		Length:        in.Spec.Length,
+		Type:          in.Spec.Type,
+		ForceRecreate: in.Spec.ForceRecreate,
 	}
 }
 

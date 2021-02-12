@@ -2,12 +2,11 @@ package sshkeypair
 
 import (
 	"context"
-	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -21,7 +20,7 @@ import (
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
-var log = logf.Log.WithName("controller_secret")
+var log = logf.Log.WithName("controller_ssh_secret")
 
 // Add creates a new Secret Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -73,7 +72,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling SSSHKeyPair")
-
+	ctx := context.TODO()
 	// Fetch the Secret instance
 	instance := &v1alpha1.SSHKeyPair{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -89,32 +88,90 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	length := instance.Spec.Length
+	secretType := instance.Spec.Type
+	regenerate := instance.Spec.ForceRecreate
 
 	values := make(map[string][]byte)
 
-	fmt.Println(instance.Spec)
 	secretLength, _, err := crd.ParseByteLength(secret.SecretLength(), length)
 	if err != nil {
+		// TODO errorstuff
+	}
 
+	existing := &v1.Secret{}
+	err = r.client.Get(ctx, request.NamespacedName, existing)
+	// secret not found, create new one
+	if errors.IsNotFound(err) {
+		keyPair, err := secret.GenerateSSHKeypair(secretLength)
+
+		values[secret.SecretFieldPublicKey] = keyPair.PublicKey
+		values[secret.SecretFieldPrivateKey] = keyPair.PrivateKey
+
+		desiredSecret := crd.NewSecret(instance, values, secretType)
+
+		err = r.client.Create(context.Background(), desiredSecret)
+		if err != nil {
+			if errors.IsAlreadyExists(err) {
+				// TODO do error stuff
+			} else {
+				return reconcile.Result{Requeue: true}, err
+			}
+		}
+		return reconcile.Result{}, nil
+	} else {
+		// other error occurred
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
+	existingPublicKey := existing.Data[secret.SecretFieldPublicKey]
+	existingPrivateKey := existing.Data[secret.SecretFieldPrivateKey]
+
+	targetSecret := existing.DeepCopy()
+
+	if len(existingPrivateKey) > 0 && !regenerate {
+		if len(existingPublicKey) == 0 {
+			// restore public key if private key exists
+			rsaKey, err := secret.PrivateKeyFromPEM(existingPrivateKey)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			existingPublicKey, err = secret.SshPublicKeyForPrivateKey(rsaKey)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
+			targetSecret.Data[secret.SecretFieldPublicKey] = existingPublicKey
+		}
+		return reconcile.Result{}, nil
 	}
 
 	keyPair, err := secret.GenerateSSHKeypair(secretLength)
 
-	values["ssh-publickey"] = keyPair.PublicKey
-	values["ssh-privatekey"] = keyPair.PrivateKey
+	targetSecret.Data[secret.SecretFieldPublicKey] = keyPair.PublicKey
+	targetSecret.Data[secret.SecretFieldPrivateKey] = keyPair.PrivateKey
 
-	desiredSecret := crd.NewSecret(instance, values)
-
-	err = r.client.Create(context.Background(), desiredSecret)
+	err = r.client.Update(ctx, targetSecret)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			err = r.client.Update(context.Background(), desiredSecret)
-			if err != nil {
-				return reconcile.Result{Requeue: true}, err
-			}
-		} else {
-			return reconcile.Result{Requeue: true}, err
-		}
+		return reconcile.Result{Requeue: true}, err
 	}
+
+	// var stringRef *v1.ObjectReference
+	// stringRef, err = reference.GetReference(r.scheme, targetSecret)
+	// if err != nil {
+	// 	return reconcile.Result{}, err
+	// }
+
+	// // set status information TODO do something useful with this
+	// status := instance.GetStatus()
+	// status.SetState(v1alpha1.ReconcilerStateCompleted)
+	// status.SetSecret(stringRef)
+	//
+	// if err := r.client.Status().Update(ctx, instance); err != nil {
+	// 	return reconcile.Result{}, err
+	// }
+
 	return reconcile.Result{}, nil
 }

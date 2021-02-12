@@ -66,7 +66,7 @@ func verifySSHKeypairSecret(t *testing.T, in, out *corev1.Secret) {
 		t.Errorf("publicKey(%d) or privateKey(%d) have invalid length", len(publicKey), len(privateKey))
 	}
 
-	key, err := privateKeyFromPEM(privateKey)
+	key, err := PrivateKeyFromPEM(privateKey)
 	if err != nil {
 		t.Error(err, "generated private key could not be parsed")
 	}
@@ -76,7 +76,7 @@ func verifySSHKeypairSecret(t *testing.T, in, out *corev1.Secret) {
 		t.Error(err, "key validation failed")
 	}
 
-	pub, err := sshPublicKeyForPrivateKey(key)
+	pub, err := SshPublicKeyForPrivateKey(key)
 	if err != nil {
 		t.Error(err, "generated public key could not be parsed")
 	}
@@ -179,7 +179,7 @@ func TestSSHKeypairLengthAnnotation(t *testing.T) {
 		Namespace: in.Namespace}, out))
 	verifySSHKeypairSecret(t, in, out)
 
-	key, err := privateKeyFromPEM(out.Data[SecretFieldPrivateKey])
+	key, err := PrivateKeyFromPEM(out.Data[SecretFieldPrivateKey])
 	if err != nil {
 		t.Error(err, "generated private key could not be parsed")
 	}
@@ -204,7 +204,7 @@ func TestSSHKeypairLengthDefault(t *testing.T) {
 		Namespace: in.Namespace}, out))
 	verifySSHKeypairSecret(t, in, out)
 
-	key, err := privateKeyFromPEM(out.Data[SecretFieldPrivateKey])
+	key, err := PrivateKeyFromPEM(out.Data[SecretFieldPrivateKey])
 	if err != nil {
 		t.Error(err, "generated private key could not be parsed")
 	}

@@ -38,12 +38,12 @@ func (sg SSHKeypairGenerator) generateData(instance *corev1.Secret) (reconcile.R
 	if len(privateKey) > 0 && !regenerate {
 		if len(publicKey) == 0 {
 			// restore public key if private key exists
-			rsaKey, err := privateKeyFromPEM(privateKey)
+			rsaKey, err := PrivateKeyFromPEM(privateKey)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 
-			publicKey, err = sshPublicKeyForPrivateKey(rsaKey)
+			publicKey, err = SshPublicKeyForPrivateKey(rsaKey)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -92,7 +92,7 @@ func GenerateSSHKeypair(length int) (SSHKeypair, error) {
 		return SSHKeypair{}, err
 	}
 
-	publicKey, err := sshPublicKeyForPrivateKey(key)
+	publicKey, err := SshPublicKeyForPrivateKey(key)
 	if err != nil {
 		return SSHKeypair{}, err
 	}
@@ -103,7 +103,7 @@ func GenerateSSHKeypair(length int) (SSHKeypair, error) {
 	}, nil
 }
 
-func privateKeyFromPEM(pemKey []byte) (*rsa.PrivateKey, error) {
+func PrivateKeyFromPEM(pemKey []byte) (*rsa.PrivateKey, error) {
 	b, _ := pem.Decode(pemKey)
 	if b == nil {
 		return nil, errors.New("failed to parse private Key PEM block")
@@ -116,7 +116,7 @@ func privateKeyFromPEM(pemKey []byte) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func sshPublicKeyForPrivateKey(privateKey *rsa.PrivateKey) ([]byte, error) {
+func SshPublicKeyForPrivateKey(privateKey *rsa.PrivateKey) ([]byte, error) {
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err

@@ -3,7 +3,9 @@ package v1alpha1
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 type SSHKeyPairSpec struct {
-	Length string `json:"length"`
+	Length        string `json:"length, omitempty"`
+	Type          string `json:"type, omitempty"`
+	ForceRecreate bool   `json:"forceRecreate,omitempty"`
 }
 
 type SSHKeyPair struct {
