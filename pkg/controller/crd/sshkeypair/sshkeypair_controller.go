@@ -200,6 +200,10 @@ func generateKeyPair(privateKey []byte, length string) (secret.SSHKeypair, error
 		// use private key to regenerate public key
 		var publicKey []byte
 		publicKey, err = regeneratePublicKey(privateKey)
+		if err != nil {
+			reqLogger.Error(err, "could not regenerate ssh key pair")
+			return secret.SSHKeypair{}, errors.WithStack(err)
+		}
 		keyPair.PrivateKey = privateKey
 		keyPair.PublicKey = publicKey
 	}
