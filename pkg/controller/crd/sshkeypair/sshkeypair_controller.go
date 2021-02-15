@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"time"
 
+	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -90,8 +91,6 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	secretType := instance.Spec.Type
 	regenerate := instance.Spec.ForceRecreate
 
-	values := make(map[string][]byte)
-
 	secretLength, _, err := crd.ParseByteLength(secret.SecretLength(), length)
 	if err != nil {
 		reqLogger.Error(err, "could not parse length for new random string")
@@ -102,42 +101,23 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.client.Get(ctx, request.NamespacedName, existing)
 	// secret not found, create new one
 	if errors.IsNotFound(err) {
-		keyPair, innerErr := secret.GenerateSSHKeypair(secretLength)
-		if innerErr != nil {
-			reqLogger.Error(innerErr, "could not generate ssh key pair")
-			return reconcile.Result{RequeueAfter: time.Second * 30}, innerErr
-		}
-
-		values[secret.SecretFieldPublicKey] = keyPair.PublicKey
-		values[secret.SecretFieldPrivateKey] = keyPair.PrivateKey
-
-		var desiredSecret *v1.Secret
-		desiredSecret, innerErr = crd.NewSecret(instance, values, secretType)
-		if innerErr != nil {
-			// unable to set ownership of secret
-			return reconcile.Result{Requeue: true}, innerErr
-		}
-
-		innerErr = r.client.Create(context.Background(), desiredSecret)
-		if innerErr != nil {
-			return reconcile.Result{Requeue: true}, innerErr
-		}
-
-		// Get reference to created secret and store it in status
-		innerErr = r.GetSecretRefAndSetStatus(ctx, desiredSecret, instance)
-		if innerErr != nil {
-			return reconcile.Result{Requeue: true}, innerErr
-		}
-
-		return reconcile.Result{}, nil
+		return r.createNewSecret(ctx, secretLength, secretType, instance, reqLogger)
 	} else {
 		// other error occurred
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 	}
+	return r.updateSecret(ctx, secretLength, regenerate, existing, instance, reqLogger)
 
+}
+
+// updateSecret attempts to update an existing Secret object with new values. Secret will only be updated,
+// if it is owned by a SSHKeyPair CR.
+func (r *ReconcileSSHKeyPair) updateSecret(ctx context.Context, secretLength int, regenerate bool,
+	existing *v1.Secret, instance *v1alpha1.SSHKeyPair, reqLogger logr.Logger) (reconcile.Result, error) {
 	// check if secret was created by this cr
+	var err error
 	existingOwnerRefs := existing.OwnerReferences
 	ownedByCR := false
 	for _, ref := range existingOwnerRefs {
@@ -195,7 +175,7 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	}
 
 	// retrieve secret reference and set it as status in instance
-	err = r.GetSecretRefAndSetStatus(ctx, targetSecret, instance)
+	err = r.getSecretRefAndSetStatus(ctx, targetSecret, instance)
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
 	}
@@ -203,8 +183,44 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-// GetSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
-func (r *ReconcileSSHKeyPair) GetSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.SSHKeyPair) error {
+// createNewSecret creates a new ssh key pair from the provided values. The Secret's owner will be set
+// as the SSHKeyPair that is being reconciled and a reference to the Secret will be stored in
+// the CR's status
+func (r *ReconcileSSHKeyPair) createNewSecret(ctx context.Context, secretLength int, secretType string,
+	instance *v1alpha1.SSHKeyPair, reqLogger logr.Logger) (reconcile.Result, error) {
+	values := make(map[string][]byte)
+	keyPair, innerErr := secret.GenerateSSHKeypair(secretLength)
+	if innerErr != nil {
+		reqLogger.Error(innerErr, "could not generate ssh key pair")
+		return reconcile.Result{RequeueAfter: time.Second * 30}, innerErr
+	}
+
+	values[secret.SecretFieldPublicKey] = keyPair.PublicKey
+	values[secret.SecretFieldPrivateKey] = keyPair.PrivateKey
+
+	var desiredSecret *v1.Secret
+	desiredSecret, innerErr = crd.NewSecret(instance, values, secretType)
+	if innerErr != nil {
+		// unable to set ownership of secret
+		return reconcile.Result{Requeue: true}, innerErr
+	}
+
+	innerErr = r.client.Create(context.Background(), desiredSecret)
+	if innerErr != nil {
+		return reconcile.Result{Requeue: true}, innerErr
+	}
+
+	// Get reference to created secret and store it in status
+	innerErr = r.getSecretRefAndSetStatus(ctx, desiredSecret, instance)
+	if innerErr != nil {
+		return reconcile.Result{Requeue: true}, innerErr
+	}
+
+	return reconcile.Result{}, nil
+}
+
+// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
+func (r *ReconcileSSHKeyPair) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.SSHKeyPair) error {
 	// get Secret reference for status
 	stringRef, err := reference.GetReference(r.scheme, desiredSecret)
 	if err != nil {

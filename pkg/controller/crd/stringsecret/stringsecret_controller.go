@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -107,57 +108,11 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{Requeue: true}, err
 	}
 
-	fieldNames := instance.Spec.FieldNames
-	length := instance.Spec.Length
-	encoding := instance.Spec.Encoding
-	data := instance.Spec.Data
-	secretType := instance.Spec.Type
-	regenerate := instance.Spec.ForceRecreate
-
-	values := make(map[string][]byte)
-
-	for key := range data {
-		values[key] = []byte(data[key])
-	}
-
-	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
-	if err != nil {
-		reqLogger.Error(err, "could not parse length for new random string")
-		return reconcile.Result{RequeueAfter: time.Second * 30}, err
-	}
-
 	existing := &v1.Secret{}
 	err = r.client.Get(ctx, request.NamespacedName, existing)
 	// secret not found, create new one
 	if errors.IsNotFound(err) {
-		for _, field := range fieldNames {
-			randomString, randErr := secret.GenerateRandomString(secretLength, encoding, isByteLength)
-			if randErr != nil {
-				reqLogger.Error(err, "could not generate new random string")
-				return reconcile.Result{RequeueAfter: time.Second * 30}, err
-			}
-			values[field] = randomString
-		}
-
-		desiredSecret, innerErr := crd.NewSecret(instance, values, secretType)
-		if innerErr != nil {
-			// unable to set ownership of secret
-			return reconcile.Result{Requeue: true}, innerErr
-		}
-
-		innerErr = r.client.Create(ctx, desiredSecret)
-		if innerErr != nil {
-			// secret has been created at some point during this reconcile, retry
-			return reconcile.Result{Requeue: true}, innerErr
-		}
-
-		// get Secret reference for status
-		innerErr = r.GetSecretRefAndSetStatus(ctx, desiredSecret, instance)
-		if innerErr != nil {
-			return reconcile.Result{Requeue: true}, innerErr
-		}
-
-		return reconcile.Result{}, nil
+		return r.createNewSecret(ctx, instance, reqLogger)
 	} else {
 		// other error occurred
 		if err != nil {
@@ -165,6 +120,24 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 	}
 	// no errors, so secret exists
+	return r.UpdateSecret(ctx, instance, existing, reqLogger)
+}
+
+// updateSecret attempts to update an existing Secret object with new values. Secret will only be updated,
+// if it is owned by a StringSecret CR.
+func (r *ReconcileString) UpdateSecret(ctx context.Context, instance *v1alpha1.StringSecret, existing *v1.Secret, reqLogger logr.Logger) (reconcile.Result, error) {
+	fieldNames := instance.Spec.FieldNames
+	length := instance.Spec.Length
+	encoding := instance.Spec.Encoding
+	regenerate := instance.Spec.ForceRecreate
+
+	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
+	if err != nil {
+		reqLogger.Error(err, "could not parse length for new random string")
+		return reconcile.Result{RequeueAfter: time.Second * 30}, err
+	}
+
+	values := make(map[string][]byte)
 
 	// generate only empty fields if regenerate wasn't set to true
 	for _, field := range fieldNames {
@@ -212,6 +185,57 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 	err = r.GetSecretRefAndSetStatus(ctx, targetSecret, instance)
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
+	}
+
+	return reconcile.Result{}, nil
+}
+
+// createNewSecret creates a new string secret from the provided values. The Secret's owner will be set
+// as the StringSecret that is being reconciled and a reference to the Secret will be stored in
+// the CR's status
+func (r *ReconcileString) createNewSecret(ctx context.Context, instance *v1alpha1.StringSecret, reqLogger logr.Logger) (reconcile.Result, error) {
+	fieldNames := instance.Spec.FieldNames
+	length := instance.Spec.Length
+	encoding := instance.Spec.Encoding
+	data := instance.Spec.Data
+	secretType := instance.Spec.Type
+
+	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
+	if err != nil {
+		reqLogger.Error(err, "could not parse length for new random string")
+		return reconcile.Result{RequeueAfter: time.Second * 30}, err
+	}
+
+	values := make(map[string][]byte)
+
+	for key := range data {
+		values[key] = []byte(data[key])
+	}
+	for _, field := range fieldNames {
+		randomString, randErr := secret.GenerateRandomString(secretLength, encoding, isByteLength)
+		if randErr != nil {
+			reqLogger.Error(err, "could not generate new random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
+		values[field] = randomString
+	}
+
+	desiredSecret, innerErr := crd.NewSecret(instance, values, secretType)
+	if innerErr != nil {
+		// unable to set ownership of secret
+		return reconcile.Result{Requeue: true}, innerErr
+	}
+
+	innerErr = r.client.Create(ctx, desiredSecret)
+	if innerErr != nil {
+		// secret has been created at some point during this reconcile, retry
+		return reconcile.Result{Requeue: true}, innerErr
+	}
+
+	// get Secret reference for status
+	innerErr = r.GetSecretRefAndSetStatus(ctx, desiredSecret, instance)
+	if innerErr != nil {
+		return reconcile.Result{Requeue: true}, innerErr
 	}
 
 	return reconcile.Result{}, nil
