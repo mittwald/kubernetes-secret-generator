@@ -24,6 +24,7 @@ import (
 )
 
 var log = logf.Log.WithName("controller_basicauth_secret")
+var reqLogger logr.Logger
 
 const Kind = "BasicAuth"
 
@@ -68,21 +69,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger = log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling BasicAuth")
 	ctx := context.Background()
+
 	// Fetch the BasicAuth instance
 	instance := &v1alpha1.BasicAuth{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		// if instance is not found don#t requeue and don't return error, else requeue and return error
 		return crd.CheckError(err)
 	}
+
 	// attempt to fetch secret object described by this BasicAuth
 	existing := &v1.Secret{}
 	err = r.client.Get(ctx, request.NamespacedName, existing)
 	if errors.IsNotFound(err) {
-
+		// secret not found, create new one
 		return r.createNewSecret(ctx, instance, reqLogger)
 	} else {
 		// other error occurred
@@ -92,7 +95,6 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 	// secret already exists
 	return r.updateSecret(ctx, instance, existing, reqLogger)
-
 }
 
 // updateSecret attempts to update an existing Secret object with new values. Secret will only be updated,
@@ -125,6 +127,7 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
 	regenerate := instance.Spec.ForceRegenerate
+	data := instance.Spec.Data
 
 	existingAuth := existing.Data[secret.SecretFieldBasicAuthIngress]
 
@@ -135,7 +138,13 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha
 
 	targetSecret := existing.DeepCopy()
 
-	password, passwordHash, err := generateBasicAuthValues(reqLogger, length, encoding)
+	for key := range data {
+		if string(targetSecret.Data[key]) == "" || regenerate {
+			targetSecret.Data[key] = []byte(data[key])
+		}
+	}
+
+	password, passwordHash, err := generateBasicAuthValues(length, encoding)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
@@ -147,7 +156,7 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha
 	return r.clientUpdateSecret(ctx, targetSecret, instance)
 }
 
-// createNewSecret creates a new basicauth secret from the provided values. The Secret's owner will be set
+// createNewSecret creates a new basic auth secret from the provided values. The Secret's owner will be set
 // as the BasicAuth that is being reconciled and a reference to the Secret will be stored in
 // the CR's status
 func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, instance *v1alpha1.BasicAuth, reqLogger logr.Logger) (reconcile.Result, error) {
@@ -161,10 +170,15 @@ func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, instance *v1al
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
 	secretType := instance.Spec.Type
+	data := instance.Spec.Data
 
 	values := make(map[string][]byte)
 
-	password, passwordHash, innerErr := generateBasicAuthValues(reqLogger, length, encoding)
+	for key := range data {
+		values[key] = []byte(data[key])
+	}
+
+	password, passwordHash, innerErr := generateBasicAuthValues(length, encoding)
 	if innerErr != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, innerErr
 	}
@@ -194,7 +208,7 @@ func (r *ReconcileBasicAuth) getSecretRefAndSetStatus(ctx context.Context, desir
 }
 
 // generateBasicAuthValues returns a newly generated password and its hash with given length and encoding
-func generateBasicAuthValues(reqLogger logr.Logger, length, encoding string) ([]byte, []byte, error) {
+func generateBasicAuthValues(length, encoding string) ([]byte, []byte, error) {
 	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
 	if err != nil {
 		reqLogger.Error(err, "could not parse length for new random string")

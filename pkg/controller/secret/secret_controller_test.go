@@ -2,6 +2,7 @@ package secret
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
 	"github.com/spf13/viper"
@@ -33,6 +34,7 @@ func getSecretName() string {
 
 func TestMain(m *testing.M) {
 	cfgPath := os.Getenv("KUBECONFIG")
+	fmt.Println(cfgPath)
 	cfg, err := clientcmd.BuildConfigFromFlags("", cfgPath)
 
 	if err != nil {

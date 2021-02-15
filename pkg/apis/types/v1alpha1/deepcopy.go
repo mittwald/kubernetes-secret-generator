@@ -57,6 +57,7 @@ func (in *BasicAuth) DeepCopyInto(out *BasicAuth) {
 		Encoding:        in.Spec.Encoding,
 		Type:            in.Spec.Type,
 		ForceRegenerate: in.Spec.ForceRegenerate,
+		Data:            in.Spec.Data,
 	}
 	out.Status = SecretStatus{
 		Secret: in.Status.Secret,
@@ -96,6 +97,8 @@ func (in *SSHKeyPair) DeepCopyInto(out *SSHKeyPair) {
 		Length:          in.Spec.Length,
 		Type:            in.Spec.Type,
 		ForceRegenerate: in.Spec.ForceRegenerate,
+		PrivateKey:      in.Spec.PrivateKey,
+		Data:            in.Spec.Data,
 	}
 	out.Status = SecretStatus{
 		Secret: in.Status.Secret,
