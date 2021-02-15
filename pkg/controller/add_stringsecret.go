@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd/string"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd/stringsecret"
 )
 
 func init() {

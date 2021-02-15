@@ -117,7 +117,7 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 
 		var passwordHash []byte
-		passwordHash, innerErr = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		passwordHash, innerErr = bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 		if err != nil {
 			reqLogger.Error(innerErr, "could not hash random string")
 
@@ -159,7 +159,6 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 			ownedByCR = true
 			break
 		}
-
 	}
 	if !ownedByCR {
 		// secret is not owned by cr, do nothing
@@ -184,7 +183,7 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	var passwordHash []byte
-	passwordHash, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	passwordHash, err = bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 	if err != nil {
 		reqLogger.Error(err, "could not hash random string")
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err

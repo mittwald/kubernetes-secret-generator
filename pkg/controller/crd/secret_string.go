@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -32,16 +33,15 @@ func NewSecret(ownerCR metav1.Object, values map[string][]byte, secretType strin
 
 func ParseByteLength(fallback int, length string) (int, bool, error) {
 	isByteLength := false
-	secretLength := fallback
 	lengthString := strings.ToLower(length)
 	if strings.HasSuffix(lengthString, secret.ByteSuffix) {
 		isByteLength = true
 	}
 	intVal, err := strconv.Atoi(strings.TrimSuffix(lengthString, secret.ByteSuffix))
 	if err != nil {
-		return 0, false, err
+		return fallback, isByteLength, errors.WithStack(err)
 	}
-	secretLength = intVal
+	secretLength := intVal
 
 	return secretLength, isByteLength, nil
 }

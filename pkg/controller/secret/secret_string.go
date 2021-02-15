@@ -92,7 +92,7 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
 	if err != nil {
 		return err
 	}
-	instance.Data[key] = []byte(value)
+	instance.Data[key] = value
 
 	pg.log.Info("set field of instance to new randomly generated instance", "bytes", len(value), "field", key, "encoding", encoding)
 

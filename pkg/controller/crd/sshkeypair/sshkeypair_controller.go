@@ -116,7 +116,6 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		innerErr = r.client.Create(context.Background(), desiredSecret)
 		if innerErr != nil {
 			return reconcile.Result{Requeue: true}, innerErr
-
 		}
 
 		// Get reference to created secret and store it in status
@@ -140,7 +139,6 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			ownedByCR = true
 			break
 		}
-
 	}
 	if !ownedByCR {
 		// secret is not owned by cr, do nothing
