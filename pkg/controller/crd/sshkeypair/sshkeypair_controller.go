@@ -111,7 +111,12 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		values[secret.SecretFieldPublicKey] = keyPair.PublicKey
 		values[secret.SecretFieldPrivateKey] = keyPair.PrivateKey
 
-		desiredSecret := crd.NewSecret(instance, values, secretType)
+		var desiredSecret *v1.Secret
+		desiredSecret, innerErr = crd.NewSecret(instance, values, secretType)
+		if innerErr != nil {
+			// unable to set ownership of secret
+			return reconcile.Result{Requeue: true}, innerErr
+		}
 
 		innerErr = r.client.Create(context.Background(), desiredSecret)
 		if innerErr != nil {
@@ -119,7 +124,10 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 		}
 
 		// Get reference to created secret and store it in status
-		r.GetSecretRefAndSetStatus(ctx, desiredSecret, instance)
+		innerErr = r.GetSecretRefAndSetStatus(ctx, desiredSecret, instance)
+		if innerErr != nil {
+			return reconcile.Result{Requeue: true}, innerErr
+		}
 
 		return reconcile.Result{}, nil
 	} else {

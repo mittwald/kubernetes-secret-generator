@@ -138,9 +138,14 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 			}
 			values[field] = randomString
 		}
-		desiredSecret := crd.NewSecret(instance, values, secretType)
 
-		innerErr := r.client.Create(ctx, desiredSecret)
+		desiredSecret, innerErr := crd.NewSecret(instance, values, secretType)
+		if innerErr != nil {
+			// unable to set ownership of secret
+			return reconcile.Result{Requeue: true}, innerErr
+		}
+
+		innerErr = r.client.Create(ctx, desiredSecret)
 		if innerErr != nil {
 			// secret has been created at some point during this reconcile, retry
 			return reconcile.Result{Requeue: true}, innerErr

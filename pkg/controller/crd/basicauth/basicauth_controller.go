@@ -128,7 +128,12 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 		values[secret.SecretFieldBasicAuthUsername] = []byte(username)
 		values[secret.SecretFieldBasicAuthPassword] = password
 
-		desiredSecret := crd.NewSecret(instance, values, secretType)
+		var desiredSecret *v1.Secret
+		desiredSecret, innerErr = crd.NewSecret(instance, values, secretType)
+		if innerErr != nil {
+			// unable to set ownership of secret
+			return reconcile.Result{Requeue: true}, innerErr
+		}
 
 		innerErr = r.client.Create(context.Background(), desiredSecret)
 		if innerErr != nil {

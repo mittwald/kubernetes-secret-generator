@@ -13,7 +13,7 @@ import (
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
-func NewSecret(ownerCR metav1.Object, values map[string][]byte, secretType string) *corev1.Secret {
+func NewSecret(ownerCR metav1.Object, values map[string][]byte, secretType string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ownerCR.GetName(),
@@ -26,9 +26,12 @@ func NewSecret(ownerCR metav1.Object, values map[string][]byte, secretType strin
 	if secretType != "" {
 		secret.Type = corev1.SecretType(secretType)
 	}
-	controllerutil.SetControllerReference(ownerCR, secret, scheme.Scheme)
+	err := controllerutil.SetControllerReference(ownerCR, secret, scheme.Scheme)
+	if err != nil {
+		return nil, err
+	}
 
-	return secret
+	return secret, nil
 }
 
 func ParseByteLength(fallback int, length string) (int, bool, error) {
