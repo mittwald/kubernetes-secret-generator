@@ -105,7 +105,7 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 	desired := instance.DeepCopy()
 
 	sType := SecretType(desired.Annotations[AnnotationSecretType])
-	if err := sType.Validate(); err != nil {
+	if err = sType.Validate(); err != nil {
 		if _, ok := desired.Annotations[AnnotationSecretAutoGenerate]; !ok && sType == "" {
 			// return if secret has no type and no autogenerate annotation
 			return reconcile.Result{}, nil

@@ -125,7 +125,6 @@ func GenerateRandomString(length int, encoding string, lenBytes bool) ([]byte, e
 	} else {
 		return []byte(encodedString[0:length]), nil
 	}
-
 }
 
 // ensure elements in input array are unique

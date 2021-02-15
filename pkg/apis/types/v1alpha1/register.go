@@ -18,8 +18,8 @@ var (
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&String{},
-		&StringList{},
+		&StringSecret{},
+		&StringSecretList{},
 		&BasicAuth{},
 		&BasicAuthList{},
 		&SSHKeyPair{},

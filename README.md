@@ -102,7 +102,7 @@ kind: Secret
 metadata:
   name: string-secret
   annotations:
-    secret-generator.v1.mittwald.de/type: string
+    secret-generator.v1.mittwald.de/type: stringsecret
     secret-generator.v1.mittwald.de/secure: "yes"
     secret-generator.v1.mittwald.de/autogenerate: password
     secret-generator.v1.mittwald.de/autogenerate-generated-at: "2020-04-03T14:07:47+02:00"

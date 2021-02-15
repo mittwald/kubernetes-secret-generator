@@ -6,10 +6,10 @@ import (
 
 // DeepCopyInto copies all properties of this object into another object of the
 // same type that is provided as a pointer.
-func (in *String) DeepCopyInto(out *String) {
+func (in *StringSecret) DeepCopyInto(out *StringSecret) {
 	out.TypeMeta = in.TypeMeta
 	out.ObjectMeta = in.ObjectMeta
-	out.Spec = StringSpec{
+	out.Spec = StringSecretSpec{
 		Length:        in.Spec.Length,
 		Encoding:      in.Spec.Encoding,
 		FieldNames:    in.Spec.FieldNames,
@@ -17,28 +17,27 @@ func (in *String) DeepCopyInto(out *String) {
 		Type:          in.Spec.Type,
 		ForceRecreate: in.Spec.ForceRecreate,
 	}
-	out.Status = StringStatus{
-		State:  in.Status.State,
+	out.Status = SecretStatus{
 		Secret: in.Status.Secret,
 	}
 }
 
 // DeepCopyObject returns a generically typed copy of an object
-func (in *String) DeepCopyObject() runtime.Object {
-	out := String{}
+func (in *StringSecret) DeepCopyObject() runtime.Object {
+	out := StringSecret{}
 	in.DeepCopyInto(&out)
 
 	return &out
 }
 
 // DeepCopyObject returns a generically typed copy of an object
-func (in *StringList) DeepCopyObject() runtime.Object {
-	out := StringList{}
+func (in *StringSecretList) DeepCopyObject() runtime.Object {
+	out := StringSecretList{}
 	out.TypeMeta = in.TypeMeta
 	out.ListMeta = in.ListMeta
 
 	if in.Items != nil {
-		out.Items = make([]String, len(in.Items))
+		out.Items = make([]StringSecret, len(in.Items))
 		for i := range in.Items {
 			in.Items[i].DeepCopyInto(&out.Items[i])
 		}
@@ -58,6 +57,9 @@ func (in *BasicAuth) DeepCopyInto(out *BasicAuth) {
 		Encoding:      in.Spec.Encoding,
 		Type:          in.Spec.Type,
 		ForceRecreate: in.Spec.ForceRecreate,
+	}
+	out.Status = SecretStatus{
+		Secret: in.Status.Secret,
 	}
 }
 
@@ -94,6 +96,9 @@ func (in *SSHKeyPair) DeepCopyInto(out *SSHKeyPair) {
 		Length:        in.Spec.Length,
 		Type:          in.Spec.Type,
 		ForceRecreate: in.Spec.ForceRecreate,
+	}
+	out.Status = SecretStatus{
+		Secret: in.Status.Secret,
 	}
 }
 

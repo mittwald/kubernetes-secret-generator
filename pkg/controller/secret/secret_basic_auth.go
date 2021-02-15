@@ -50,7 +50,7 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
 	if err != nil {
 		bg.log.Error(err, "could not hash random string")
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
@@ -58,6 +58,6 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 
 	instance.Data[SecretFieldBasicAuthIngress] = append([]byte(username+":"), passwordHash...)
 	instance.Data[SecretFieldBasicAuthUsername] = []byte(username)
-	instance.Data[SecretFieldBasicAuthPassword] = []byte(password)
+	instance.Data[SecretFieldBasicAuthPassword] = password
 	return reconcile.Result{}, nil
 }
