@@ -85,31 +85,12 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	// get configuration values from instance
-	username := instance.Spec.Username
-
-	// fallback in case username is empty
-	if username == "" {
-		username = "admin"
-	}
-
-	length := instance.Spec.Length
-	encoding := instance.Spec.Encoding
-	secretType := instance.Spec.Type
-	regenerate := instance.Spec.ForceRecreate
-
-	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
-	if err != nil {
-		reqLogger.Error(err, "could not parse length for new random string")
-		return reconcile.Result{RequeueAfter: time.Second * 30}, err
-	}
-
 	// attempt to fetch secret object described by this BasicAuth
 	existing := &v1.Secret{}
 	err = r.client.Get(ctx, request.NamespacedName, existing)
 	if errors.IsNotFound(err) {
 
-		return r.createNewSecret(ctx, secretLength, secretType, encoding, username, isByteLength, instance, reqLogger)
+		return r.createNewSecret(ctx, instance, reqLogger)
 	} else {
 		// other error occurred
 		if err != nil {
@@ -117,17 +98,14 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 	}
 	// secret already exists
-	return r.updateSecret(ctx, secretLength, encoding, username, isByteLength, regenerate, instance, existing, reqLogger)
+	return r.updateSecret(ctx, instance, existing, reqLogger)
 
 }
 
 // updateSecret attempts to update an existing Secret object with new values. Secret will only be updated,
 // if it is owned by a BasicAuth CR.
-func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, secretLength int, encoding string, username string,
-	isByteLength bool, regenerate bool, instance *v1alpha1.BasicAuth, existing *v1.Secret, reqLogger logr.Logger) (reconcile.Result, error) {
+func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha1.BasicAuth, existing *v1.Secret, reqLogger logr.Logger) (reconcile.Result, error) {
 	existingOwnerRefs := existing.OwnerReferences
-
-	var err error
 
 	ownedByCR := false
 	for _, ref := range existingOwnerRefs {
@@ -144,6 +122,17 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, secretLength int,
 		return reconcile.Result{}, nil
 	}
 
+	username := instance.Spec.Username
+
+	// fallback in case username is empty
+	if username == "" {
+		username = "admin"
+	}
+
+	length := instance.Spec.Length
+	encoding := instance.Spec.Encoding
+	regenerate := instance.Spec.ForceRecreate
+
 	existingAuth := existing.Data[secret.SecretFieldBasicAuthIngress]
 
 	if len(existingAuth) > 0 && !regenerate {
@@ -153,56 +142,37 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, secretLength int,
 
 	targetSecret := existing.DeepCopy()
 
-	var password []byte
-	password, err = secret.GenerateRandomString(secretLength, encoding, isByteLength)
+	password, passwordHash, err := generateBasicAuthValues(reqLogger, length, encoding)
 	if err != nil {
-		reqLogger.Error(err, "could not hash random string")
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	var passwordHash []byte
-	passwordHash, err = bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
-	if err != nil {
-		reqLogger.Error(err, "could not hash random string")
-		return reconcile.Result{RequeueAfter: time.Second * 30}, err
-	}
 	targetSecret.Data[secret.SecretFieldBasicAuthIngress] = append([]byte(username+":"), passwordHash...)
 	targetSecret.Data[secret.SecretFieldBasicAuthUsername] = []byte(username)
 	targetSecret.Data[secret.SecretFieldBasicAuthPassword] = password
 
-	err = r.client.Update(ctx, targetSecret)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	err = r.getSecretRefAndSetStatus(ctx, targetSecret, instance)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	return reconcile.Result{}, nil
+	return r.clientUpdateSecret(ctx, targetSecret, instance)
 }
 
 // createNewSecret creates a new basicauth secret from the provided values. The Secret's owner will be set
 // as the BasicAuth that is being reconciled and a reference to the Secret will be stored in
 // the CR's status
-func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, secretLength int, secretType string, encoding string, username string,
-	isByteLength bool, instance *v1alpha1.BasicAuth, reqLogger logr.Logger) (reconcile.Result, error) {
-	var err error
+func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, instance *v1alpha1.BasicAuth, reqLogger logr.Logger) (reconcile.Result, error) {
+	username := instance.Spec.Username
 
-	values := make(map[string][]byte)
-	// secret not found, create new one
-	password, innerErr := secret.GenerateRandomString(secretLength, encoding, isByteLength)
-	if err != nil {
-		reqLogger.Error(innerErr, "could not generate random string")
-		return reconcile.Result{RequeueAfter: time.Second * 30}, innerErr
+	// fallback in case username is empty
+	if username == "" {
+		username = "admin"
 	}
 
-	var passwordHash []byte
-	passwordHash, innerErr = bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
-	if err != nil {
-		reqLogger.Error(innerErr, "could not hash random string")
+	length := instance.Spec.Length
+	encoding := instance.Spec.Encoding
+	secretType := instance.Spec.Type
 
+	values := make(map[string][]byte)
+
+	password, passwordHash, innerErr := generateBasicAuthValues(reqLogger, length, encoding)
+	if innerErr != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, innerErr
 	}
 
@@ -210,25 +180,7 @@ func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, secretLength i
 	values[secret.SecretFieldBasicAuthUsername] = []byte(username)
 	values[secret.SecretFieldBasicAuthPassword] = password
 
-	var desiredSecret *v1.Secret
-	desiredSecret, innerErr = crd.NewSecret(instance, values, secretType)
-	if innerErr != nil {
-		// unable to set ownership of secret
-		return reconcile.Result{Requeue: true}, innerErr
-	}
-
-	innerErr = r.client.Create(context.Background(), desiredSecret)
-	if innerErr != nil {
-		// secret has been created at some point during this reconcile, retry
-		return reconcile.Result{Requeue: true}, innerErr
-	}
-
-	innerErr = r.getSecretRefAndSetStatus(ctx, desiredSecret, instance)
-	if innerErr != nil {
-		return reconcile.Result{Requeue: true}, innerErr
-	}
-
-	return reconcile.Result{}, nil
+	return r.clientCreateNewSecret(ctx, values, secretType, instance)
 }
 
 // getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
@@ -246,4 +198,70 @@ func (r *ReconcileBasicAuth) getSecretRefAndSetStatus(ctx context.Context, desir
 	}
 
 	return nil
+}
+
+// generateBasicAuthValues returns a newly generated password and its hash with given length and encoding
+func generateBasicAuthValues(reqLogger logr.Logger, length, encoding string) ([]byte, []byte, error) {
+	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
+	if err != nil {
+		reqLogger.Error(err, "could not parse length for new random string")
+		return []byte{}, []byte{}, err
+	}
+
+	// secret not found, create new one
+	var password []byte
+	password, err = secret.GenerateRandomString(secretLength, encoding, isByteLength)
+	if err != nil {
+		reqLogger.Error(err, "could not generate random string")
+
+		return []byte{}, []byte{}, err
+	}
+
+	var passwordHash []byte
+	passwordHash, err = bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+	if err != nil {
+		reqLogger.Error(err, "could not hash random string")
+
+		return []byte{}, []byte{}, err
+	}
+
+	return password, passwordHash, nil
+}
+
+// clientCreateNewSecret creates a new Secret resource, uses the client to save it to the cluster and gets its resource
+// ref to set the status of instance
+func (r *ReconcileBasicAuth) clientCreateNewSecret(ctx context.Context, values map[string][]byte, secretType string,
+	instance *v1alpha1.BasicAuth) (reconcile.Result, error) {
+	desiredSecret, err := crd.NewSecret(instance, values, secretType)
+	if err != nil {
+		// unable to set ownership of secret
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = r.client.Create(context.Background(), desiredSecret)
+	if err != nil {
+		// secret has been created at some point during this reconcile, retry
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = r.getSecretRefAndSetStatus(ctx, desiredSecret, instance)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	return reconcile.Result{}, nil
+}
+
+// clientUpdateSecret updates a Secret resource, uses the client to save it to the cluster and gets its resource
+// ref to set the status of instance
+func (r *ReconcileBasicAuth) clientUpdateSecret(ctx context.Context, targetSecret *v1.Secret, instance *v1alpha1.BasicAuth) (reconcile.Result, error) {
+	err := r.client.Update(ctx, targetSecret)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = r.getSecretRefAndSetStatus(ctx, targetSecret, instance)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	return reconcile.Result{}, nil
 }

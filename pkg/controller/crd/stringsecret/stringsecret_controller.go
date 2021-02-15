@@ -39,7 +39,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileString{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileStringSecret{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 type MyCRStatus struct {
@@ -48,7 +48,7 @@ type MyCRStatus struct {
 	Reason     string      `json:"reason,omitempty"`
 }
 
-type ReconcileString struct {
+type ReconcileStringSecret struct {
 	// This Client, initialized using mgr.Client() above, is a split Client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
@@ -89,7 +89,7 @@ func ignoreDeletionPredicate() predicate.Predicate {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileStringSecret) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	fmt.Println("reconciling")
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling StringSecret")
@@ -125,7 +125,7 @@ func (r *ReconcileString) Reconcile(request reconcile.Request) (reconcile.Result
 
 // updateSecret attempts to update an existing Secret object with new values. Secret will only be updated,
 // if it is owned by a StringSecret CR.
-func (r *ReconcileString) UpdateSecret(ctx context.Context, instance *v1alpha1.StringSecret, existing *v1.Secret, reqLogger logr.Logger) (reconcile.Result, error) {
+func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1alpha1.StringSecret, existing *v1.Secret, reqLogger logr.Logger) (reconcile.Result, error) {
 	fieldNames := instance.Spec.FieldNames
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
@@ -175,25 +175,13 @@ func (r *ReconcileString) UpdateSecret(ctx context.Context, instance *v1alpha1.S
 		targetSecret.Data[key] = values[key]
 	}
 
-	// attempt to update existing secret
-	err = r.client.Update(ctx, targetSecret)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	// set reference to generated secret in status information
-	err = r.GetSecretRefAndSetStatus(ctx, targetSecret, instance)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	return reconcile.Result{}, nil
+	return r.clientUpdateSecret(ctx, targetSecret, instance)
 }
 
 // createNewSecret creates a new string secret from the provided values. The Secret's owner will be set
 // as the StringSecret that is being reconciled and a reference to the Secret will be stored in
 // the CR's status
-func (r *ReconcileString) createNewSecret(ctx context.Context, instance *v1alpha1.StringSecret, reqLogger logr.Logger) (reconcile.Result, error) {
+func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v1alpha1.StringSecret, reqLogger logr.Logger) (reconcile.Result, error) {
 	fieldNames := instance.Spec.FieldNames
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
@@ -220,29 +208,11 @@ func (r *ReconcileString) createNewSecret(ctx context.Context, instance *v1alpha
 		values[field] = randomString
 	}
 
-	desiredSecret, innerErr := crd.NewSecret(instance, values, secretType)
-	if innerErr != nil {
-		// unable to set ownership of secret
-		return reconcile.Result{Requeue: true}, innerErr
-	}
-
-	innerErr = r.client.Create(ctx, desiredSecret)
-	if innerErr != nil {
-		// secret has been created at some point during this reconcile, retry
-		return reconcile.Result{Requeue: true}, innerErr
-	}
-
-	// get Secret reference for status
-	innerErr = r.GetSecretRefAndSetStatus(ctx, desiredSecret, instance)
-	if innerErr != nil {
-		return reconcile.Result{Requeue: true}, innerErr
-	}
-
-	return reconcile.Result{}, nil
+	return r.clientCreateNewSecret(ctx, values, secretType, instance)
 }
 
-// GetSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
-func (r *ReconcileString) GetSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.StringSecret) error {
+// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
+func (r *ReconcileStringSecret) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.StringSecret) error {
 	// get Secret reference for status
 	stringRef, err := reference.GetReference(r.scheme, desiredSecret)
 	if err != nil {
@@ -256,4 +226,42 @@ func (r *ReconcileString) GetSecretRefAndSetStatus(ctx context.Context, desiredS
 	}
 
 	return nil
+}
+
+// clientCreateNewSecret creates a new Secret resource, uses the client to save it to the cluster and gets its resource
+// ref to set the status of instance
+func (r *ReconcileStringSecret) clientCreateNewSecret(ctx context.Context, values map[string][]byte, secretType string,
+	instance *v1alpha1.StringSecret) (reconcile.Result, error) {
+	desiredSecret, err := crd.NewSecret(instance, values, secretType)
+	if err != nil {
+		// unable to set ownership of secret
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = r.client.Create(context.Background(), desiredSecret)
+	if err != nil {
+		// secret has been created at some point during this reconcile, retry
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = r.getSecretRefAndSetStatus(ctx, desiredSecret, instance)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	return reconcile.Result{}, nil
+}
+
+// clientUpdateSecret updates a Secret resource, uses the client to save it to the cluster and gets its resource
+// ref to set the status of instance
+func (r *ReconcileStringSecret) clientUpdateSecret(ctx context.Context, targetSecret *v1.Secret, instance *v1alpha1.StringSecret) (reconcile.Result, error) {
+	err := r.client.Update(ctx, targetSecret)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = r.getSecretRefAndSetStatus(ctx, targetSecret, instance)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	return reconcile.Result{}, nil
 }
