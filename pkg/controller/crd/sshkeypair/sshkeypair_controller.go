@@ -2,12 +2,12 @@ package sshkeypair
 
 import (
 	"context"
-	"crypto/rsa"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/reference"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,6 +24,7 @@ import (
 )
 
 var log = logf.Log.WithName("controller_ssh_secret")
+var reqLogger logr.Logger
 
 const Kind = "SSHKeyPair"
 
@@ -74,22 +75,16 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 
 	// Fetch the SSHKeyPair instance
 	instance := &v1alpha1.SSHKeyPair{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		// if instance is not found don#t requeue and don't return error, else requeue and return error
+		return crd.CheckError(err)
 	}
 
 	existing := &v1.Secret{}
 	err = r.client.Get(ctx, request.NamespacedName, existing)
 	// secret not found, create new one
-	if errors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		return r.createNewSecret(ctx, instance, reqLogger)
 	} else {
 		// other error occurred
@@ -97,19 +92,19 @@ func (r *ReconcileSSHKeyPair) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 	}
-	return r.updateSecret(ctx, existing, instance, reqLogger)
+	return r.updateSecret(ctx, existing, instance)
 
 }
 
 // updateSecret attempts to update an existing Secret object with new values. Secret will only be updated,
 // if it is owned by a SSHKeyPair CR.
-func (r *ReconcileSSHKeyPair) updateSecret(ctx context.Context, existing *v1.Secret, instance *v1alpha1.SSHKeyPair, reqLogger logr.Logger) (reconcile.Result, error) {
+func (r *ReconcileSSHKeyPair) updateSecret(ctx context.Context, existing *v1.Secret, instance *v1alpha1.SSHKeyPair) (reconcile.Result, error) {
 	// check if secret was created by this cr
 	var err error
 
 	// get config values from instance
 	length := instance.Spec.Length
-	regenerate := instance.Spec.ForceRecreate
+	regenerate := instance.Spec.ForceRegenerate
 
 	existingOwnerRefs := existing.OwnerReferences
 	ownedByCR := false
@@ -130,33 +125,14 @@ func (r *ReconcileSSHKeyPair) updateSecret(ctx context.Context, existing *v1.Sec
 	existingPublicKey := existing.Data[secret.SecretFieldPublicKey]
 	existingPrivateKey := existing.Data[secret.SecretFieldPrivateKey]
 
-	targetSecret := existing.DeepCopy()
-
-	if len(existingPrivateKey) > 0 && !regenerate {
-		if len(existingPublicKey) == 0 {
-			// restore public key if private key exists
-			var rsaKey *rsa.PrivateKey
-			rsaKey, err = secret.PrivateKeyFromPEM(existingPrivateKey)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			existingPublicKey, err = secret.SshPublicKeyForPrivateKey(rsaKey)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			targetSecret.Data[secret.SecretFieldPublicKey] = existingPublicKey
-		}
-		// Keys exist and regeneration is not forced, nothing to do
-		return reconcile.Result{}, nil
-	}
-
+	// generate key pair or restore public key if private key exists
 	var keyPair secret.SSHKeypair
-	keyPair, err = generateKeyPair(reqLogger, length)
+	keyPair, err = restoreOrGenerateKeyPair(existingPrivateKey, existingPublicKey, length, regenerate)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
+
+	targetSecret := existing.DeepCopy()
 
 	targetSecret.Data[secret.SecretFieldPublicKey] = keyPair.PublicKey
 	targetSecret.Data[secret.SecretFieldPrivateKey] = keyPair.PrivateKey
@@ -174,7 +150,7 @@ func (r *ReconcileSSHKeyPair) createNewSecret(ctx context.Context, instance *v1a
 	length := instance.Spec.Length
 	secretType := instance.Spec.Type
 
-	keyPair, err := generateKeyPair(reqLogger, length)
+	keyPair, err := generateKeyPair(length)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
@@ -185,17 +161,18 @@ func (r *ReconcileSSHKeyPair) createNewSecret(ctx context.Context, instance *v1a
 	return r.clientCreateNewSecret(ctx, values, secretType, instance)
 }
 
-func generateKeyPair(reqLogger logr.Logger, length string) (secret.SSHKeypair, error) {
+// generateKeyPair generates a new ssh key pair with keys of the given length
+func generateKeyPair(length string) (secret.SSHKeypair, error) {
 	secretLength, _, err := crd.ParseByteLength(secret.SecretLength(), length)
 	if err != nil {
 		reqLogger.Error(err, "could not parse length for new random string")
-		return secret.SSHKeypair{}, err
+		return secret.SSHKeypair{}, errors.WithStack(err)
 	}
 
 	keyPair, err := secret.GenerateSSHKeypair(secretLength)
 	if err != nil {
 		reqLogger.Error(err, "could not generate ssh key pair")
-		return secret.SSHKeypair{}, err
+		return secret.SSHKeypair{}, errors.WithStack(err)
 	}
 
 	return keyPair, nil
@@ -254,4 +231,33 @@ func (r *ReconcileSSHKeyPair) clientUpdateSecret(ctx context.Context, targetSecr
 		return reconcile.Result{Requeue: true}, err
 	}
 	return reconcile.Result{}, nil
+}
+
+func restoreOrGenerateKeyPair(existingPrivateKey []byte, existingPublicKey []byte, length string, regenerate bool) (secret.SSHKeypair, error) {
+	var keyPair secret.SSHKeypair
+	if len(existingPrivateKey) > 0 && !regenerate {
+		if len(existingPublicKey) == 0 {
+			// restore public key if private key exists
+			rsaKey, err := secret.PrivateKeyFromPEM(existingPrivateKey)
+			if err != nil {
+				reqLogger.Error(err, "could not get private key from pem")
+				return secret.SSHKeypair{}, errors.WithStack(err)
+			}
+			existingPublicKey, err = secret.SshPublicKeyForPrivateKey(rsaKey)
+			if err != nil {
+				reqLogger.Error(err, "could not get private key from pem")
+				return secret.SSHKeypair{}, errors.WithStack(err)
+			}
+		}
+		// public key was either regenerated or no regeneration necessary, in that case return existing values
+		keyPair.PrivateKey = existingPrivateKey
+		keyPair.PublicKey = existingPublicKey
+		return keyPair, nil
+	}
+	var err error
+	keyPair, err = generateKeyPair(length)
+	if err != nil {
+		return secret.SSHKeypair{}, err
+	}
+	return keyPair, nil
 }

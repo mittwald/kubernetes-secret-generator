@@ -10,12 +10,12 @@ func (in *StringSecret) DeepCopyInto(out *StringSecret) {
 	out.TypeMeta = in.TypeMeta
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec = StringSecretSpec{
-		Length:        in.Spec.Length,
-		Encoding:      in.Spec.Encoding,
-		FieldNames:    in.Spec.FieldNames,
-		Data:          in.Spec.Data,
-		Type:          in.Spec.Type,
-		ForceRecreate: in.Spec.ForceRecreate,
+		Length:          in.Spec.Length,
+		Encoding:        in.Spec.Encoding,
+		FieldNames:      in.Spec.FieldNames,
+		Data:            in.Spec.Data,
+		Type:            in.Spec.Type,
+		ForceRegenerate: in.Spec.ForceRegenerate,
 	}
 	out.Status = SecretStatus{
 		Secret: in.Status.Secret,
@@ -52,11 +52,11 @@ func (in *BasicAuth) DeepCopyInto(out *BasicAuth) {
 	out.TypeMeta = in.TypeMeta
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec = BasicAuthSpec{
-		Length:        in.Spec.Length,
-		Username:      in.Spec.Username,
-		Encoding:      in.Spec.Encoding,
-		Type:          in.Spec.Type,
-		ForceRecreate: in.Spec.ForceRecreate,
+		Length:          in.Spec.Length,
+		Username:        in.Spec.Username,
+		Encoding:        in.Spec.Encoding,
+		Type:            in.Spec.Type,
+		ForceRegenerate: in.Spec.ForceRegenerate,
 	}
 	out.Status = SecretStatus{
 		Secret: in.Status.Secret,
@@ -93,9 +93,9 @@ func (in *SSHKeyPair) DeepCopyInto(out *SSHKeyPair) {
 	out.TypeMeta = in.TypeMeta
 	out.ObjectMeta = in.ObjectMeta
 	out.Spec = SSHKeyPairSpec{
-		Length:        in.Spec.Length,
-		Type:          in.Spec.Type,
-		ForceRecreate: in.Spec.ForceRecreate,
+		Length:          in.Spec.Length,
+		Type:            in.Spec.Type,
+		ForceRegenerate: in.Spec.ForceRegenerate,
 	}
 	out.Status = SecretStatus{
 		Secret: in.Status.Secret,

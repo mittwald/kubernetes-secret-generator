@@ -75,16 +75,9 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 	instance := &v1alpha1.BasicAuth{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+		// if instance is not found don#t requeue and don't return error, else requeue and return error
+		return crd.CheckError(err)
 	}
-
 	// attempt to fetch secret object described by this BasicAuth
 	existing := &v1.Secret{}
 	err = r.client.Get(ctx, request.NamespacedName, existing)
@@ -131,7 +124,7 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha
 
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
-	regenerate := instance.Spec.ForceRecreate
+	regenerate := instance.Spec.ForceRegenerate
 
 	existingAuth := existing.Data[secret.SecretFieldBasicAuthIngress]
 

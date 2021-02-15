@@ -5,9 +5,9 @@ import (
 )
 
 type SSHKeyPairSpec struct {
-	Length        string `json:"length,omitempty"`
-	Type          string `json:"type,omitempty"`
-	ForceRecreate bool   `json:"forceRecreate,omitempty"`
+	Length          string `json:"length,omitempty"`
+	Type            string `json:"type,omitempty"`
+	ForceRegenerate bool   `json:"forceRecreate,omitempty"`
 }
 
 type SSHKeyPair struct {

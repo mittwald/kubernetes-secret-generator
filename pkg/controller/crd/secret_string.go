@@ -6,9 +6,11 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
@@ -47,4 +49,16 @@ func ParseByteLength(fallback int, length string) (int, bool, error) {
 	secretLength := intVal
 
 	return secretLength, isByteLength, nil
+}
+
+// CheckError if err is  'NotFound', returns nil and no requeue, else returns err
+func CheckError(err error) (reconcile.Result, error) {
+	if apierrors.IsNotFound(err) {
+		// Request object not found, could have been deleted after reconcile request.
+		// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+		// Return and don't requeue
+		return reconcile.Result{}, nil
+	}
+	// Error reading the object - requeue the request.
+	return reconcile.Result{Requeue: true}, err
 }

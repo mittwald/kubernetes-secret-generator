@@ -98,14 +98,8 @@ func (r *ReconcileStringSecret) Reconcile(request reconcile.Request) (reconcile.
 	instance := &v1alpha1.StringSecret{}
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{Requeue: true}, err
+		// if instance is not found don#t requeue and don't return error, else requeue and return error
+		return crd.CheckError(err)
 	}
 
 	existing := &v1.Secret{}
@@ -129,7 +123,7 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 	fieldNames := instance.Spec.FieldNames
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
-	regenerate := instance.Spec.ForceRecreate
+	regenerate := instance.Spec.ForceRegenerate
 
 	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
 	if err != nil {

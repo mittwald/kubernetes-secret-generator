@@ -5,12 +5,12 @@ import (
 )
 
 type StringSecretSpec struct {
-	Length        string            `json:"length,omitempty"`
-	Encoding      string            `json:"encoding,omitempty"`
-	Type          string            `json:"type,omitempty"`
-	FieldNames    []string          `json:"fieldNames,omitempty"`
-	Data          map[string]string `json:"data,omitempty"`
-	ForceRecreate bool              `json:"forceRecreate,omitempty"`
+	Length          string            `json:"length,omitempty"`
+	Encoding        string            `json:"encoding,omitempty"`
+	Type            string            `json:"type,omitempty"`
+	FieldNames      []string          `json:"fieldNames,omitempty"`
+	Data            map[string]string `json:"data,omitempty"`
+	ForceRegenerate bool              `json:"forceRecreate,omitempty"`
 }
 
 type StringSecret struct {
