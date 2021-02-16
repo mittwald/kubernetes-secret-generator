@@ -22,7 +22,7 @@ uninstall: ## Uninstall all that all performed in the $ make install
 	kubectl delete -f deploy/operator.yaml -n ${NAMESPACE}
 
 .PHONY: test
-test: kind
+test: crd
 	@echo go test
 	go test ./... -v
 
@@ -35,6 +35,12 @@ fmt:
 kind: ## Create a kind cluster to test against
 	kind create cluster --name kind-k8s-secret-generator
 	kind get kubeconfig --name kind-k8s-secret-generator | tee ${KUBECONFIG}
+
+.PHOBY: crd
+crd: kind
+	kubectl cluster-info --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/basicauth-crd.yaml
+	kubectl cluster-info --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/sshkeypair-crd.yaml
+	kubectl cluster-info --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/stringsecret-crd.yaml
 
 .PHONY: build
 build:
