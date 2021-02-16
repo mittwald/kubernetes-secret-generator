@@ -78,6 +78,8 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
+	mgr = nil
+
 	os.Exit(code)
 }
 
