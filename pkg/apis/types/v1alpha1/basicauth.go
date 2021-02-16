@@ -10,7 +10,7 @@ type BasicAuthSpec struct {
 	Encoding        string            `json:"encoding,omitempty"`
 	Type            string            `json:"type,omitempty"`
 	Data            map[string]string `json:"data,omitempty"`
-	ForceRegenerate bool              `json:"forceRecreate,omitempty"`
+	ForceRegenerate bool              `json:"forceRegenerate,omitempty"`
 }
 
 type BasicAuth struct {

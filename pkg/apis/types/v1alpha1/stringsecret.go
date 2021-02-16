@@ -10,7 +10,7 @@ type StringSecretSpec struct {
 	Type            string            `json:"type,omitempty"`
 	FieldNames      []string          `json:"fieldNames,omitempty"`
 	Data            map[string]string `json:"data,omitempty"`
-	ForceRegenerate bool              `json:"forceRecreate,omitempty"`
+	ForceRegenerate bool              `json:"forceRegenerate,omitempty"`
 }
 
 type StringSecret struct {

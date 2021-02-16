@@ -9,7 +9,7 @@ type SSHKeyPairSpec struct {
 	PrivateKey      string            `json:"privateKey,omitempty"`
 	Type            string            `json:"type,omitempty"`
 	Data            map[string]string `json:"data,omitempty"`
-	ForceRegenerate bool              `json:"forceRecreate,omitempty"`
+	ForceRegenerate bool              `json:"forceRegenerate,omitempty"`
 }
 
 type SSHKeyPair struct {

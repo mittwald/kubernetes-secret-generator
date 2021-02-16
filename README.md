@@ -61,7 +61,11 @@ $ make uninstall
 
 This operator is capable of generating secure random strings and ssh keypair secrets. 
 
-The type of secret to be generated can be specified by the `secret-generator.v1.mittwald.de/type` annotation.
+It supports two ways of secret generation, annotation-based and cr-based.
+
+### Annotation-based generation
+
+For annotation based generation, the type of secret to be generated can be specified by the `secret-generator.v1.mittwald.de/type` annotation.
 This annotation can be added to any Kubernetes secret object in the operators `watchNamespace`.
 
 The encoding of the secret can be specified by the `secret-generator.v1.mittwald.de/encoding` annotation.
@@ -71,7 +75,6 @@ that was generated. `base64` will be used, if the annotation was not used.
 The length of the generated secret can be specified by the `secret-generator.v1.mittwald.de/length` annotation.
 By default, this length refers to the length of the generated string, and not the length of the byte sequence encoded by it. 
 The suffix `B` or `b` can be used to indicate that the provided value should refer to the encoded byte sequence instead.
-
 
 ### Secure Random Strings
 
@@ -178,6 +181,38 @@ data:
   password: test123
   auth: "admin:PASSWORD_HASH"
 ```
+
+### CR-based generation
+
+The operator supports three kinds of custom resources: `StringSecret`, `SSHKeyPair` and `BasicAuth`. These crs can be used to trigger creation, update and deletion of desired secrets
+
+### Secure random strings
+
+A `StringSecret` resource can be used to generate secure random strings similar to the ones offered by the annotation approach.
+Desired Fields to be randomly generated can be supplied via the `spec.fieldNames` property, which supports a list of strings.
+Secret length and encoding can be specified using `spec.length` and `spec.encoding` properties and have the same options as annotation based generation.
+The `spec.data` property can be used to specify arbitrary data entries the generated secret's `data` property should be populated with.
+Finally, the `spec.forceRegenerate` property can be used to control regeneration of secret fields.
+
+Example:
+
+```yaml
+apiVersion: "mittwald.systems/v1alpha1"
+kind: "StringSecret"
+metadata:
+  name: "example-pw"
+  namespace: "default"
+spec:
+  forceRegenerate: false
+  length: "40"
+  encoding: "base64"
+  fieldNames: 
+  - "password"
+  data:
+    username: "testuser"
+```
+
+Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications
 
 ## Operational tasks
 

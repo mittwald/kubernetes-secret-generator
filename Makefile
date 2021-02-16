@@ -8,8 +8,13 @@ install: ## Install all resources (RBAC and Operator)
 	kubectl apply -f deploy/role.yaml -n ${NAMESPACE}
 	kubectl apply -f deploy/role_binding.yaml  -n ${NAMESPACE}
 	kubectl apply -f deploy/service_account.yaml  -n ${NAMESPACE}
+	@echo ....... Applying CRDs .......
+	kubectl apply -f deploy/helm-chart/crds/basicauth-crd.yaml
+	kubectl apply -f deploy/helm-chart/crds/sshkeypair-crd.yaml
+	kubectl apply -f deploy/helm-chart/crds/stringsecret-crd.yaml
 	@echo ....... Applying Operator .......
 	kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
+
 
 .PHONY: uninstall
 uninstall: ## Uninstall all that all performed in the $ make install
