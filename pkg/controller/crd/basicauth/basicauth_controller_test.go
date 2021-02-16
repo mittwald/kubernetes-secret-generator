@@ -19,7 +19,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -56,7 +55,6 @@ func TestMain(m *testing.M) {
 		MapperProvider: restMapper,
 		NewCache:       cache.MultiNamespacedCacheBuilder(strings.Split("default", ",")),
 		NewClient: func(_ cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
-			config.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
 			return client.New(config, options)
 		},
 	}
@@ -208,11 +206,11 @@ func TestGenerateBasicAuthWithoutUsername(t *testing.T) {
 	verifyBasicAuthSecretFromCR(t, in, out)
 
 	require.Equal(t, "admin", string(out.Data[secret.SecretFieldBasicAuthUsername]))
-
 	// check correct deletion of generated secret
 	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
 	// give deletion time to be processed
 	time.Sleep(1 * time.Second)
+
 	out = &corev1.Secret{}
 	err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{
 		Name:      in.Name,
@@ -247,7 +245,6 @@ func TestGenerateBasicAuthWithUsername(t *testing.T) {
 	verifyBasicAuthSecretFromCR(t, in, out)
 
 	require.Equal(t, testUsername, string(out.Data[secret.SecretFieldBasicAuthUsername]))
-
 	// check correct deletion of generated secret
 	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
 	// give deletion time to be processed

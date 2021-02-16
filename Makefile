@@ -32,9 +32,14 @@ fmt:
 	go fmt $$(go list ./...)
 
 .PHONY: kind
-kind: ## Create a kind cluster to test against
+kind: deletekind## Create a kind cluster to test against
 	kind create cluster --name kind-k8s-secret-generator
 	kind get kubeconfig --name kind-k8s-secret-generator | tee ${KUBECONFIG}
+
+
+.Phony: deletekind
+deletekind:
+	kind delete cluster --name kind-k8s-secret-generator
 
 .PHOBY: crd
 crd: kind
