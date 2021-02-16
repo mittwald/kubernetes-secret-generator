@@ -2,9 +2,11 @@ package secret
 
 import (
 	"context"
-	"fmt"
+	"os"
+	"reflect"
+	"testing"
+
 	"github.com/google/uuid"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -14,14 +16,13 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/flowcontrol"
-	"os"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
+
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
 )
 
 var mgr manager.Manager
@@ -34,7 +35,6 @@ func getSecretName() string {
 
 func TestMain(m *testing.M) {
 	cfgPath := os.Getenv("KUBECONFIG")
-	fmt.Println(cfgPath)
 	cfg, err := clientcmd.BuildConfigFromFlags("", cfgPath)
 
 	if err != nil {

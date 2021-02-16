@@ -161,8 +161,8 @@ func TestGenerateBasicAuthNoRegenerate(t *testing.T) {
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
 		Name:      in.Name,
 		Namespace: in.Namespace}, outNew))
-	newPassword := string(out.Data[SecretFieldBasicAuthPassword])
-	newAuth := string(out.Data[SecretFieldBasicAuthIngress])
+	newPassword := string(outNew.Data[SecretFieldBasicAuthPassword])
+	newAuth := string(outNew.Data[SecretFieldBasicAuthIngress])
 
 	if oldPassword != newPassword {
 		t.Errorf("secret has been updated")
