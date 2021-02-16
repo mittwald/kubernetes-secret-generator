@@ -78,8 +78,6 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	mgr = nil
-
 	os.Exit(code)
 }
 
@@ -210,7 +208,7 @@ func TestGenerateBasicAuthWithoutUsername(t *testing.T) {
 	require.Equal(t, "admin", string(out.Data[secret.SecretFieldBasicAuthUsername]))
 	// check correct deletion of generated secret
 	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
-	// give deletion time to be processed
+	// give deletion time to be processed, more time because kind cluster takes forever
 	time.Sleep(1 * time.Second)
 
 	out = &corev1.Secret{}
@@ -249,7 +247,7 @@ func TestGenerateBasicAuthWithUsername(t *testing.T) {
 	require.Equal(t, testUsername, string(out.Data[secret.SecretFieldBasicAuthUsername]))
 	// check correct deletion of generated secret
 	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
-	// give deletion time to be processed
+	// give deletion time to be processed, more time since kind cluster takes forever
 	time.Sleep(1 * time.Second)
 	out = &corev1.Secret{}
 	err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{

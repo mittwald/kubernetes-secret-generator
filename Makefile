@@ -24,7 +24,7 @@ uninstall: ## Uninstall all that all performed in the $ make install
 .PHONY: test
 test: crd
 	@echo go test
-	go test ./... -v
+	go test ./... -v -count=1
 
 .PHONY: fmt
 fmt:

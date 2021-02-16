@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
@@ -13,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/flowcontrol"
@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
 )
 
 var mgr manager.Manager
@@ -36,6 +35,7 @@ func getSecretName() string {
 }
 
 func TestMain(m *testing.M) {
+	time.Sleep(22 * time.Second)
 	cfgPath := os.Getenv("KUBECONFIG")
 	cfg, err := clientcmd.BuildConfigFromFlags("", cfgPath)
 
@@ -53,11 +53,6 @@ func TestMain(m *testing.M) {
 			config.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
 			return client.New(config, options)
 		},
-	}
-
-	err = v1alpha1.AddToScheme(scheme.Scheme)
-	if err != nil {
-		panic(err)
 	}
 
 	mgr, err = manager.New(cfg, mgrOpts)
