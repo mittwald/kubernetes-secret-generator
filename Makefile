@@ -38,9 +38,9 @@ kind: ## Create a kind cluster to test against
 
 .PHOBY: crd
 crd: kind
-	kubectl cluster-info --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/basicauth-crd.yaml
-	kubectl cluster-info --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/sshkeypair-crd.yaml
-	kubectl cluster-info --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/stringsecret-crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/basicauth-crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/sshkeypair-crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/stringsecret-crd.yaml
 
 .PHONY: build
 build:
