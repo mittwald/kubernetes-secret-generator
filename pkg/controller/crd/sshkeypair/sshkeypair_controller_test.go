@@ -1,6 +1,7 @@
-package basicauth
+package sshkeypair
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"reflect"
@@ -27,14 +28,12 @@ import (
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
 var mgr manager.Manager
 
 const labelSecretGeneratorTest = "kubernetes-secret-generator-test"
-const testUsername = "testuser123"
 const testSecretName = "testsec123"
 
 func TestMain(m *testing.M) {
@@ -66,7 +65,11 @@ func TestMain(m *testing.M) {
 
 	mgr, err = manager.New(cfg, options)
 	if err != nil {
-		panic(err)
+		if err.Error() == "error listening on :8080: listen tcp :8080: bind: address already in use" {
+
+		} else {
+			panic(err)
+		}
 	}
 
 	if err = apis.AddToScheme(mgr.GetScheme()); err != nil {
@@ -88,7 +91,7 @@ func setupViper() {
 }
 
 func reset() {
-	list := &v1alpha1.BasicAuthList{}
+	list := &v1alpha1.SSHKeyPairList{}
 	err := mgr.GetClient().List(context.TODO(),
 		list,
 		client.MatchingLabels(map[string]string{
@@ -124,14 +127,14 @@ func reset() {
 	}
 }
 
-func newBasicAuthTestCR(authSpec v1alpha1.BasicAuthSpec, name string) *v1alpha1.BasicAuth {
+func newSSHKeyPairTestCR(sshSpec v1alpha1.SSHKeyPairSpec, name string) *v1alpha1.SSHKeyPair {
 	if name == "" {
 		name = uuid.New().String()
 	}
-	cr := &v1alpha1.BasicAuth{
+	cr := &v1alpha1.SSHKeyPair{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "mittwald.systems/v1alpha1",
-			Kind:       "BasicAuth",
+			Kind:       "StringSecret",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -140,13 +143,13 @@ func newBasicAuthTestCR(authSpec v1alpha1.BasicAuthSpec, name string) *v1alpha1.
 				labelSecretGeneratorTest: "yes",
 			},
 		},
-		Spec: authSpec,
+		Spec: sshSpec,
 	}
 
 	return cr
 }
 
-func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *corev1.Secret) {
+func verifySSHSecretFromCR(t *testing.T, in *v1alpha1.SSHKeyPair, out *corev1.Secret) {
 	// Check for correct ownership
 	for index := range out.OwnerReferences {
 		if out.OwnerReferences[index].Kind == Kind {
@@ -162,97 +165,36 @@ func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *core
 		t.Error("generated secret not referenced in CR status")
 	}
 
-	auth := out.Data[secret.SecretFieldBasicAuthIngress]
-	password := out.Data[secret.SecretFieldBasicAuthPassword]
-	desiredLength, _, err := crd.ParseByteLength(secret.SecretLength(), in.Spec.Length)
+	publicKey := out.Data[secret.SecretFieldPublicKey]
+	privateKey := out.Data[secret.SecretFieldPrivateKey]
+
+	if len(privateKey) == 0 || len(publicKey) == 0 {
+		t.Errorf("publicKey(%d) or privateKey(%d) have invalid length", len(publicKey), len(privateKey))
+	}
+
+	key, err := secret.PrivateKeyFromPEM(privateKey)
 	if err != nil {
-		t.Error("Failed to determine secret length")
+		t.Error(err, "generated private key could not be parsed")
 	}
 
-	// check if password has been saved in clear text
-	// and has correct length (if the secret has actually been generated)
-	if len(password) == 0 || len(password) != desiredLength {
-		t.Errorf("generated field has wrong length of %d", len(password))
+	err = key.Validate()
+	if err != nil {
+		t.Error(err, "key validation failed")
 	}
 
-	// check if auth field has been generated (with separator)
-	if len(auth) == 0 || !strings.Contains(string(auth), ":") {
-		t.Errorf("auth field has wrong or no values %s", string(auth))
+	pub, err := secret.SshPublicKeyForPrivateKey(key)
+	if err != nil {
+		t.Error(err, "generated public key could not be parsed")
+	}
+
+	if !bytes.Equal(publicKey, pub) {
+		t.Error("publicKey doesn't match private key")
 	}
 }
 
-func TestGenerateBasicAuthWithoutUsername(t *testing.T) {
-	testSpec := v1alpha1.BasicAuthSpec{
-		Encoding: "base64",
-		Length:   "40",
-		Type:     string(corev1.SecretTypeOpaque),
-		Data:     map[string]string{},
-	}
-
-	in := newBasicAuthTestCR(testSpec, "")
-	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
-
-	doReconcile(t, in, false)
-
-	out := &corev1.Secret{}
-	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
-		Name:      in.Name,
-		Namespace: in.Namespace}, out))
-
-	// reacquire object for updated status
-	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
-		Name:      in.Name,
-		Namespace: in.Namespace}, in))
-
-	verifyBasicAuthSecretFromCR(t, in, out)
-
-	require.Equal(t, "admin", string(out.Data[secret.SecretFieldBasicAuthUsername]))
-	// check correct deletion of generated secret
-	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
-	// give deletion time to be processed
-	time.Sleep(1 * time.Second)
-
-	out = &corev1.Secret{}
-	err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{
-		Name:      in.Name,
-		Namespace: in.Namespace}, out)
-	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
-}
-
-func TestGenerateBasicAuthWithUsername(t *testing.T) {
-	testSpec := v1alpha1.BasicAuthSpec{
-		Encoding: "base64",
-		Length:   "40",
-		Username: testUsername,
-		Type:     string(corev1.SecretTypeOpaque),
-		Data:     map[string]string{},
-	}
-
-	in := newBasicAuthTestCR(testSpec, "")
-	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
-
-	doReconcile(t, in, false)
-
-	out := &corev1.Secret{}
-	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
-		Name:      in.Name,
-		Namespace: in.Namespace}, out))
-
-	// reacquire object for updated status
-	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
-		Name:      in.Name,
-		Namespace: in.Namespace}, in))
-
-	verifyBasicAuthSecretFromCR(t, in, out)
-
-	require.Equal(t, testUsername, string(out.Data[secret.SecretFieldBasicAuthUsername]))
-	// check correct deletion of generated secret
-
-}
-
-func doReconcile(t *testing.T, basicAuth *v1alpha1.BasicAuth, isErr bool) {
-	rec := ReconcileBasicAuth{mgr.GetClient(), mgr.GetScheme()}
-	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: basicAuth.Name, Namespace: basicAuth.Namespace}}
+func doReconcile(t *testing.T, sshKeyPair *v1alpha1.SSHKeyPair, isErr bool) {
+	rec := ReconcileSSHKeyPair{mgr.GetClient(), mgr.GetScheme()}
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: sshKeyPair.Name, Namespace: sshKeyPair.Namespace}}
 
 	res, err := rec.Reconcile(req)
 
@@ -264,77 +206,57 @@ func doReconcile(t *testing.T, basicAuth *v1alpha1.BasicAuth, isErr bool) {
 	require.False(t, res.Requeue)
 }
 
-func TestGenerateBasicAuthNoRegenerate(t *testing.T) {
-	testSpec := v1alpha1.BasicAuthSpec{
-		Encoding:        "base64",
-		Length:          "40",
-		Username:        "Hans",
-		Type:            string(corev1.SecretTypeOpaque),
-		Data:            map[string]string{},
-		ForceRegenerate: false,
+func TestGenerateSecrets(t *testing.T) {
+	testSpec := v1alpha1.SSHKeyPairSpec{
+		Length: "40",
+		Type:   string(corev1.SecretTypeOpaque),
+		Data:   map[string]string{},
 	}
-
-	in := newBasicAuthTestCR(testSpec, "")
+	in := newSSHKeyPairTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, false)
 
 	out := &corev1.Secret{}
-	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
-	oldPassword := string(out.Data[secret.SecretFieldBasicAuthPassword])
-	oldAuth := string(out.Data[secret.SecretFieldBasicAuthIngress])
 
-	verifyBasicAuthSecretFromCR(t, in, out)
+	verifySSHSecretFromCR(t, in, out)
 
-	in.Spec.Username = "Hugo"
-	in.Spec.Length = "35"
-	doReconcile(t, in, false)
-
-	outNew := &corev1.Secret{}
-	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
+	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
+	// give deletion time to be processed
+	time.Sleep(1 * time.Second)
+	out = &corev1.Secret{}
+	err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{
 		Name:      in.Name,
-		Namespace: in.Namespace}, outNew))
-
-	newPassword := string(outNew.Data[secret.SecretFieldBasicAuthPassword])
-	newAuth := string(outNew.Data[secret.SecretFieldBasicAuthIngress])
-
-	if oldPassword != newPassword {
-		t.Errorf("secret has been updated")
-	}
-
-	if oldAuth != newAuth {
-		t.Errorf("secret has been updated")
-	}
+		Namespace: in.Namespace}, out)
+	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
 }
 
-func TestGenerateBasicAuthRegenerate(t *testing.T) {
-	testSpec := v1alpha1.BasicAuthSpec{
-		Encoding:        "base64",
+func TestRegenerateSecrets(t *testing.T) {
+	testSpec := v1alpha1.SSHKeyPairSpec{
 		Length:          "40",
-		Username:        "Hans",
 		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: true,
 	}
-
-	in := newBasicAuthTestCR(testSpec, "")
+	in := newSSHKeyPairTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, false)
 
 	out := &corev1.Secret{}
-	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
-	oldPassword := string(out.Data[secret.SecretFieldBasicAuthPassword])
-	oldAuth := string(out.Data[secret.SecretFieldBasicAuthIngress])
+	verifySSHSecretFromCR(t, in, out)
 
-	verifyBasicAuthSecretFromCR(t, in, out)
+	oldPrivateKey := string(out.Data[secret.SecretFieldPrivateKey])
+	oldPublicKey := string(out.Data[secret.SecretFieldPublicKey])
 
-	in.Spec.Username = "Hugo"
 	in.Spec.Length = "35"
+
 	doReconcile(t, in, false)
 
 	outNew := &corev1.Secret{}
@@ -342,15 +264,131 @@ func TestGenerateBasicAuthRegenerate(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, outNew))
 
-	newPassword := string(outNew.Data[secret.SecretFieldBasicAuthPassword])
-	newAuth := string(outNew.Data[secret.SecretFieldBasicAuthIngress])
+	newPrivateKey := string(outNew.Data[secret.SecretFieldPrivateKey])
+	newPublicKey := string(outNew.Data[secret.SecretFieldPublicKey])
 
-	if oldPassword == newPassword {
+	if oldPrivateKey == newPrivateKey {
 		t.Errorf("secret has not been updated")
 	}
 
-	if oldAuth == newAuth {
+	if oldPublicKey == newPublicKey {
 		t.Errorf("secret has not been updated")
+	}
+}
+
+func TestDoNotRegenerateSecrets(t *testing.T) {
+	testSpec := v1alpha1.SSHKeyPairSpec{
+		Length:          "40",
+		Type:            string(corev1.SecretTypeOpaque),
+		Data:            map[string]string{},
+		ForceRegenerate: false,
+	}
+	in := newSSHKeyPairTestCR(testSpec, "")
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcile(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+	verifySSHSecretFromCR(t, in, out)
+
+	oldPrivateKey := string(out.Data[secret.SecretFieldPrivateKey])
+	oldPublicKey := string(out.Data[secret.SecretFieldPublicKey])
+
+	in.Spec.Length = "35"
+
+	doReconcile(t, in, false)
+
+	outNew := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
+		Name:      in.Name,
+		Namespace: in.Namespace}, outNew))
+
+	newPrivateKey := string(outNew.Data[secret.SecretFieldPrivateKey])
+	newPublicKey := string(outNew.Data[secret.SecretFieldPublicKey])
+
+	if oldPrivateKey != newPrivateKey {
+		t.Errorf("secret has been updated")
+	}
+
+	if oldPublicKey != newPublicKey {
+		t.Errorf("secret has been updated")
+	}
+}
+
+func TestDoNotRegenerateSecretsFixMissingPublicKey(t *testing.T) {
+	testSpec := v1alpha1.SSHKeyPairSpec{
+		Length:          "40",
+		Type:            string(corev1.SecretTypeOpaque),
+		Data:            map[string]string{},
+		ForceRegenerate: false,
+	}
+	in := newSSHKeyPairTestCR(testSpec, "")
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcile(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+	verifySSHSecretFromCR(t, in, out)
+
+	oldPrivateKey := string(out.Data[secret.SecretFieldPrivateKey])
+	oldPublicKey := string(out.Data[secret.SecretFieldPublicKey])
+
+	out.Data[secret.SecretFieldPublicKey] = []byte{}
+
+	require.NoError(t, mgr.GetClient().Update(context.TODO(), out))
+
+	in.Spec.Length = "35"
+
+	doReconcile(t, in, false)
+
+	outNew := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
+		Name:      in.Name,
+		Namespace: in.Namespace}, outNew))
+
+	newPrivateKey := string(outNew.Data[secret.SecretFieldPrivateKey])
+	newPublicKey := string(outNew.Data[secret.SecretFieldPublicKey])
+
+	if oldPrivateKey != newPrivateKey {
+		t.Errorf("secret has been updated")
+	}
+
+	if oldPublicKey != newPublicKey {
+		t.Errorf("secret has been updated")
+	}
+}
+
+func TestRegeneratePublicKey(t *testing.T) {
+	keyPair, err := secret.GenerateSSHKeypair(40)
+	require.NoError(t, err)
+	testSpec := v1alpha1.SSHKeyPairSpec{
+		Length:          "40",
+		PrivateKey:      string(keyPair.PrivateKey),
+		Type:            string(corev1.SecretTypeOpaque),
+		Data:            map[string]string{},
+		ForceRegenerate: true,
+	}
+	in := newSSHKeyPairTestCR(testSpec, "")
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcile(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+	verifySSHSecretFromCR(t, in, out)
+
+	privateKey := string(out.Data[secret.SecretFieldPrivateKey])
+
+	if privateKey != string(keyPair.PrivateKey) {
+		t.Errorf("Private key was regenerated")
 	}
 }
 
@@ -366,23 +404,17 @@ func TestDoNotTouchOtherSecrets(t *testing.T) {
 		},
 		Data: map[string][]byte{
 			"username": []byte("test"),
-			"password": []byte("test2"),
-			"auth":     []byte("test:test2"),
 		},
 	}
 
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), secret))
 
-	testSpec := v1alpha1.BasicAuthSpec{
-		Encoding:        "base64",
-		Length:          "40",
-		Username:        "Hans",
-		Type:            string(corev1.SecretTypeOpaque),
-		Data:            map[string]string{},
-		ForceRegenerate: false,
+	testSpec := v1alpha1.SSHKeyPairSpec{
+		Length: "40",
+		Type:   string(corev1.SecretTypeOpaque),
+		Data:   map[string]string{},
 	}
-
-	in := newBasicAuthTestCR(testSpec, testSecretName)
+	in := newSSHKeyPairTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcile(t, in, false)
