@@ -184,7 +184,8 @@ data:
 
 ### CR-based generation
 
-The operator supports three kinds of custom resources: `StringSecret`, `SSHKeyPair` and `BasicAuth`. These crs can be used to trigger creation, update and deletion of desired secrets
+The operator supports three kinds of custom resources: `StringSecret`, `SSHKeyPair` and `BasicAuth`. These crs can be used to trigger creation, update and deletion of desired secrets.
+All crs support the field `spec.type` which can be used to define the kubernetes type of the generated `Secret`, e.g. "Opaque"
 
 ### Secure random strings
 
@@ -212,7 +213,49 @@ spec:
     username: "testuser"
 ```
 
-Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications
+Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications. If successful, the new resource will have its owner set as `StringSecret` used to create it, providing automated deletion/updating of the secret if the creating cr is deleted/updated. The `StringSecret` will store an object reference to the created `Secret` in its status field.
+During updating, any new fields in `spec.data` or `spec.fieldnames` will be added, while existing fields will only be overwritten/regenerated, if `spec.forceRegenerate` is set to true. 
+If the target `Secret` already exists and is not owned by a `StringSecret` resource, no changes will be made to ìt.
+
+### SSH Key Pair
+
+A `SSHKeyPair` resource can be used to generate an ssh key pair. It supports `spec.length`, `spec.data` and `spec.forceRegenerate` similar to `StringSecret` resources.
+The field `spec.privateKey` can be used to specify a private key, which will be used during runtime to regenerate a matching public key.
+Updating is handled similar to `StringSecret` resources, unowned `Secrets` are not modified, and existing fields are only updated if regeneration is forced. However, should the public key be missing, the operator will attempt to regenerate it.
+
+```yaml
+apiVersion: "mittwald.systems/v1alpha1"
+kind: "SSHKeyPair"
+metadata:
+  name: "example-ssh"
+  namespace: "default"
+spec:
+  length: "40"
+  forceRegenerate: false
+  data:
+    example: "data"
+```
+
+### Ingress Basic Auth
+
+A `BasicAuth` resource can be used to generate Ingress Basic Auth credentials. Supported properties are `spec.length`, `spec.encoding`, `spec.data` and `spec.forceRegenerate`.
+To specify a username, use `spec.username`. If no username is provided, the operator will use `admin`.
+Updates follow the same rules as for the other crs, existing `secrets` will only be updated if owned by a `BasicAuth` resource and if `spec.forceRegenerate` is set to true. The exception to this are new `spec.data` entries, which are added even if `forceRegenerate` is false, and cases where the `auth` field in the `Secret` is empty.
+
+```yaml
+apiVersion: "mittwald.systems/v1alpha1"
+kind: "BasicAuth"
+metadata:
+  name: "example-auth"
+  namespace: "default"
+spec:
+  length: "40"
+  username: "testuser"
+  encoding: "base64"
+  foreRegenerate: false
+  data:
+    example: "data"
+```
 
 ## Operational tasks
 

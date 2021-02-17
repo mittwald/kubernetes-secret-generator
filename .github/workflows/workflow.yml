@@ -53,7 +53,7 @@ jobs:
 
       - name: Go Test
         if: github.event_name == 'pull_request'
-        run: go test -coverprofile=c.out ./...
+        run: go test -coverprofile=c.out -coverpkg=./pkg/...  ./...
 
   build:
     name: Build Image

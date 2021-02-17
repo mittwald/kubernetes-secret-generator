@@ -24,7 +24,7 @@ const ByteSuffix = "b"
 
 var log = logf.Log.WithName("controller_secret")
 
-func regenerateInsecure() bool {
+func RegenerateInsecure() bool {
 	return viper.GetBool("regenerate-insecure")
 }
 
@@ -36,18 +36,18 @@ func secretEncoding() string {
 	return viper.GetString("secret-encoding")
 }
 
-func sshKeyLength() int {
+func SSHKeyLength() int {
 	return viper.GetInt("ssh-key-length")
 }
 
 // Add creates a new Secret Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, NewReconciler(mgr))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileSecret{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
@@ -163,7 +163,7 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 	return reconcile.Result{}, nil
 }
 
-func secretLengthFromAnnotation(fallback int, annotations map[string]string) (int, bool, error) {
+func SecretLengthFromAnnotation(fallback int, annotations map[string]string) (int, bool, error) {
 	l := fallback
 	isByteLength := false
 

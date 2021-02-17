@@ -7,7 +7,6 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/reference"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -33,18 +32,12 @@ const Kind = "StringSecret"
 // Add creates a new StringSecret Secret Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, NewReconciler(mgr))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileStringSecret{client: mgr.GetClient(), scheme: mgr.GetScheme()}
-}
-
-type MyCRStatus struct {
-	Status     string      `json:"status,omitempty"`
-	LastUpdate metav1.Time `json:"lastUpdate,omitempty"`
-	Reason     string      `json:"reason,omitempty"`
 }
 
 type ReconcileStringSecret struct {

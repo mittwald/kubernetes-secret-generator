@@ -1,128 +1,28 @@
-package basicauth
+package secret_test
 
 import (
 	"context"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd/basicauth"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
-var mgr manager.Manager
-
-const labelSecretGeneratorTest = "kubernetes-secret-generator-test"
 const testUsername = "testuser123"
-const testSecretName = "testsec123"
-
-func TestMain(m *testing.M) {
-	cfgPath := os.Getenv("KUBECONFIG")
-	cfg, err := clientcmd.BuildConfigFromFlags("", cfgPath)
-
-	if err != nil {
-		panic(err)
-	}
-
-	restMapper := func(cfg *rest.Config) (meta.RESTMapper, error) {
-		return apiutil.NewDynamicRESTMapper(cfg)
-	}
-
-	// Set default manager options
-	options := manager.Options{
-		Namespace:      "default",
-		MapperProvider: restMapper,
-		NewCache:       cache.MultiNamespacedCacheBuilder(strings.Split("default", ",")),
-		NewClient: func(_ cache.Cache, config *rest.Config, options client.Options) (client.Client, error) {
-			return client.New(config, options)
-		},
-	}
-
-	err = v1alpha1.AddToScheme(scheme.Scheme)
-	if err != nil {
-		panic(err)
-	}
-
-	mgr, err = manager.New(cfg, options)
-	if err != nil {
-		panic(err)
-	}
-
-	if err = apis.AddToScheme(mgr.GetScheme()); err != nil {
-		panic(err)
-	}
-
-	setupViper()
-	reset()
-
-	code := m.Run()
-
-	os.Exit(code)
-}
-
-func setupViper() {
-	viper.Set("secret-length", 40)
-	viper.Set("regenerate-insecure", false)
-	viper.Set("ssh-key-length", 2048)
-}
-
-func reset() {
-	list := &v1alpha1.BasicAuthList{}
-	err := mgr.GetClient().List(context.TODO(),
-		list,
-		client.MatchingLabels(map[string]string{
-			labelSecretGeneratorTest: "yes",
-		}),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, s := range list.Items {
-		err := mgr.GetClient().Delete(context.TODO(), &s)
-		if err != nil {
-			panic(err)
-		}
-	}
-	secList := &corev1.SecretList{}
-	err = mgr.GetClient().List(context.TODO(),
-		secList,
-		client.MatchingLabels(map[string]string{
-			labelSecretGeneratorTest: "yes",
-		}),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, s := range secList.Items {
-		err := mgr.GetClient().Delete(context.TODO(), &s)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
 
 func newBasicAuthTestCR(authSpec v1alpha1.BasicAuthSpec, name string) *v1alpha1.BasicAuth {
 	if name == "" {
@@ -149,11 +49,11 @@ func newBasicAuthTestCR(authSpec v1alpha1.BasicAuthSpec, name string) *v1alpha1.
 func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *corev1.Secret) {
 	// Check for correct ownership
 	for index := range out.OwnerReferences {
-		if out.OwnerReferences[index].Kind == Kind {
+		if out.OwnerReferences[index].Kind == basicauth.Kind {
 			break
 		}
 		if index == len(out.OwnerReferences)-1 {
-			t.Errorf("generated secret not owned by kind %s", Kind)
+			t.Errorf("generated secret not owned by kind %s", basicauth.Kind)
 		}
 	}
 
@@ -181,7 +81,7 @@ func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *core
 	}
 }
 
-func TestGenerateBasicAuthWithoutUsername(t *testing.T) {
+func TestControllerGenerateBasicAuthWithoutUsername(t *testing.T) {
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding: "base64",
 		Length:   "40",
@@ -192,7 +92,7 @@ func TestGenerateBasicAuthWithoutUsername(t *testing.T) {
 	in := newBasicAuthTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
-	doReconcile(t, in, false)
+	doReconcileBasicAuthController(t, in, false)
 
 	out := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
@@ -219,7 +119,7 @@ func TestGenerateBasicAuthWithoutUsername(t *testing.T) {
 	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
 }
 
-func TestGenerateBasicAuthWithUsername(t *testing.T) {
+func TestControllerGenerateBasicAuthWithUsername(t *testing.T) {
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding: "base64",
 		Length:   "40",
@@ -231,7 +131,7 @@ func TestGenerateBasicAuthWithUsername(t *testing.T) {
 	in := newBasicAuthTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
-	doReconcile(t, in, false)
+	doReconcileBasicAuthController(t, in, false)
 
 	out := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
@@ -250,8 +150,8 @@ func TestGenerateBasicAuthWithUsername(t *testing.T) {
 
 }
 
-func doReconcile(t *testing.T, basicAuth *v1alpha1.BasicAuth, isErr bool) {
-	rec := ReconcileBasicAuth{mgr.GetClient(), mgr.GetScheme()}
+func doReconcileBasicAuthController(t *testing.T, basicAuth *v1alpha1.BasicAuth, isErr bool) {
+	rec := basicauth.NewReconciler(mgr)
 	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: basicAuth.Name, Namespace: basicAuth.Namespace}}
 
 	res, err := rec.Reconcile(req)
@@ -264,7 +164,7 @@ func doReconcile(t *testing.T, basicAuth *v1alpha1.BasicAuth, isErr bool) {
 	require.False(t, res.Requeue)
 }
 
-func TestGenerateBasicAuthNoRegenerate(t *testing.T) {
+func TestControllerGenerateBasicAuthNoRegenerate(t *testing.T) {
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding:        "base64",
 		Length:          "40",
@@ -277,7 +177,7 @@ func TestGenerateBasicAuthNoRegenerate(t *testing.T) {
 	in := newBasicAuthTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
-	doReconcile(t, in, false)
+	doReconcileBasicAuthController(t, in, false)
 
 	out := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
@@ -290,7 +190,7 @@ func TestGenerateBasicAuthNoRegenerate(t *testing.T) {
 
 	in.Spec.Username = "Hugo"
 	in.Spec.Length = "35"
-	doReconcile(t, in, false)
+	doReconcileBasicAuthController(t, in, false)
 
 	outNew := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
@@ -309,7 +209,7 @@ func TestGenerateBasicAuthNoRegenerate(t *testing.T) {
 	}
 }
 
-func TestGenerateBasicAuthRegenerate(t *testing.T) {
+func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding:        "base64",
 		Length:          "40",
@@ -322,7 +222,7 @@ func TestGenerateBasicAuthRegenerate(t *testing.T) {
 	in := newBasicAuthTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
-	doReconcile(t, in, false)
+	doReconcileBasicAuthController(t, in, false)
 
 	out := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
@@ -335,7 +235,7 @@ func TestGenerateBasicAuthRegenerate(t *testing.T) {
 
 	in.Spec.Username = "Hugo"
 	in.Spec.Length = "35"
-	doReconcile(t, in, false)
+	doReconcileBasicAuthController(t, in, false)
 
 	outNew := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
@@ -354,7 +254,7 @@ func TestGenerateBasicAuthRegenerate(t *testing.T) {
 	}
 }
 
-func TestDoNotTouchOtherSecrets(t *testing.T) {
+func TestControllerDoNotTouchOtherSecrets(t *testing.T) {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
@@ -385,7 +285,7 @@ func TestDoNotTouchOtherSecrets(t *testing.T) {
 	in := newBasicAuthTestCR(testSpec, testSecretName)
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
-	doReconcile(t, in, false)
+	doReconcileBasicAuthController(t, in, false)
 
 	out := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
@@ -395,4 +295,5 @@ func TestDoNotTouchOtherSecrets(t *testing.T) {
 	if !reflect.DeepEqual(secret, out) {
 		t.Errorf("secret not owned by BasicAuth cr has been reconciled")
 	}
+	require.NoError(t, mgr.GetClient().Delete(context.TODO(), secret))
 }

@@ -31,11 +31,11 @@ const Kind = "BasicAuth"
 // Add creates a new BasicAuth Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, NewReconciler(mgr))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileBasicAuth{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
@@ -131,17 +131,17 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha
 
 	existingAuth := existing.Data[secret.SecretFieldBasicAuthIngress]
 
-	if len(existingAuth) > 0 && !regenerate {
-		// auth is set anf regeneration is not forced, do nothing
-		return reconcile.Result{}, nil
-	}
-
 	targetSecret := existing.DeepCopy()
 
-	for key := range data {
-		if string(targetSecret.Data[key]) == "" || regenerate {
-			targetSecret.Data[key] = []byte(data[key])
+	if len(existingAuth) > 0 && !regenerate {
+		// auth is set anf regeneration is not forced, only update new data fields
+		for key := range data {
+			if string(targetSecret.Data[key]) == "" || regenerate {
+				targetSecret.Data[key] = []byte(data[key])
+			}
 		}
+
+		return r.clientUpdateSecret(ctx, targetSecret, instance)
 	}
 
 	password, passwordHash, err := generateBasicAuthValues(length, encoding)

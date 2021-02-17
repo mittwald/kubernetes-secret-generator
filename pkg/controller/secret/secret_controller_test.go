@@ -1,4 +1,4 @@
-package secret
+package secret_test
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/flowcontrol"
@@ -24,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
 var mgr manager.Manager
@@ -55,12 +58,17 @@ func TestMain(m *testing.M) {
 		},
 	}
 
+	err = v1alpha1.AddToScheme(scheme.Scheme)
+	if err != nil {
+		panic(err)
+	}
+
 	mgr, err = manager.New(cfg, mgrOpts)
 	if err != nil {
 		panic(err)
 	}
 
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+	if err = apis.AddToScheme(mgr.GetScheme()); err != nil {
 		panic(err)
 	}
 
@@ -96,11 +104,65 @@ func reset() {
 			panic(err)
 		}
 	}
+
+	sshList := &v1alpha1.SSHKeyPairList{}
+	err = mgr.GetClient().List(context.TODO(),
+		sshList,
+		client.MatchingLabels(map[string]string{
+			labelSecretGeneratorTest: "yes",
+		}),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, s := range sshList.Items {
+		err := mgr.GetClient().Delete(context.TODO(), &s)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	stringSecretList := &v1alpha1.StringSecretList{}
+	err = mgr.GetClient().List(context.TODO(),
+		stringSecretList,
+		client.MatchingLabels(map[string]string{
+			labelSecretGeneratorTest: "yes",
+		}),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, s := range stringSecretList.Items {
+		err := mgr.GetClient().Delete(context.TODO(), &s)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	basicAuthList := &v1alpha1.BasicAuthList{}
+	err = mgr.GetClient().List(context.TODO(),
+		basicAuthList,
+		client.MatchingLabels(map[string]string{
+			labelSecretGeneratorTest: "yes",
+		}),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, s := range basicAuthList.Items {
+		err := mgr.GetClient().Delete(context.TODO(), &s)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
-func doReconcile(t *testing.T, secret *corev1.Secret, isErr bool) {
-	rec := ReconcileSecret{mgr.GetClient(), mgr.GetScheme()}
-	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}}
+func doReconcile(t *testing.T, targetSecret *corev1.Secret, isErr bool) {
+	rec := secret.NewReconciler(mgr)
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: targetSecret.Name, Namespace: targetSecret.Namespace}}
 
 	res, err := rec.Reconcile(req)
 

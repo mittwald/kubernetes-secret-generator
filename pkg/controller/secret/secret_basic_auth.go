@@ -34,7 +34,7 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 		username = "admin"
 	}
 
-	length, byteLen, err := secretLengthFromAnnotation(SecretLength(), instance.Annotations)
+	length, byteLen, err := SecretLengthFromAnnotation(SecretLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
