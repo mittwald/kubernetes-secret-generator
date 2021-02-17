@@ -51,7 +51,7 @@ func ParseByteLength(fallback int, length string) (int, bool, error) {
 	return secretLength, isByteLength, nil
 }
 
-// CheckError if err is  'NotFound', returns nil and no requeue, else returns err
+// CheckError returns nil and no requeue if err is  'NotFound', else returns err
 func CheckError(err error) (reconcile.Result, error) {
 	if apierrors.IsNotFound(err) {
 		// Request object not found, could have been deleted after reconcile request.

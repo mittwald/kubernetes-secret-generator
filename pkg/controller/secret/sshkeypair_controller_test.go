@@ -21,6 +21,7 @@ import (
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
+// newSSHKeyPairTestCR returns a SSHKeyPair custom resource. If name is set to "", a uuid will be generated
 func newSSHKeyPairTestCR(sshSpec v1alpha1.SSHKeyPairSpec, name string) *v1alpha1.SSHKeyPair {
 	if name == "" {
 		name = uuid.New().String()
@@ -43,6 +44,7 @@ func newSSHKeyPairTestCR(sshSpec v1alpha1.SSHKeyPairSpec, name string) *v1alpha1
 	return cr
 }
 
+// verifySSHSecretFromCR checks if the given Secret was correctly created from the cr
 func verifySSHSecretFromCR(t *testing.T, in *v1alpha1.SSHKeyPair, out *corev1.Secret) {
 	// Check for correct ownership
 	for index := range out.OwnerReferences {
@@ -62,10 +64,12 @@ func verifySSHSecretFromCR(t *testing.T, in *v1alpha1.SSHKeyPair, out *corev1.Se
 	publicKey := out.Data[secret.SecretFieldPublicKey]
 	privateKey := out.Data[secret.SecretFieldPrivateKey]
 
+	// check if keys have valid length
 	if len(privateKey) == 0 || len(publicKey) == 0 {
 		t.Errorf("publicKey(%d) or privateKey(%d) have invalid length", len(publicKey), len(privateKey))
 	}
 
+	// verify validity of private key
 	key, err := secret.PrivateKeyFromPEM(privateKey)
 	if err != nil {
 		t.Error(err, "generated private key could not be parsed")
@@ -100,7 +104,7 @@ func doReconcileSSHKeyPairController(t *testing.T, sshKeyPair *v1alpha1.SSHKeyPa
 	require.False(t, res.Requeue)
 }
 
-func TestGenerateSecrets(t *testing.T) {
+func TestControllerGenerateSSHSecret(t *testing.T) {
 	testSpec := v1alpha1.SSHKeyPairSpec{
 		Length: "40",
 		Type:   string(corev1.SecretTypeOpaque),
@@ -128,7 +132,7 @@ func TestGenerateSecrets(t *testing.T) {
 	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
 }
 
-func TestRegenerateSecrets(t *testing.T) {
+func TestControllerRegenerateSSHSecret(t *testing.T) {
 	testSpec := v1alpha1.SSHKeyPairSpec{
 		Length:          "40",
 		Type:            string(corev1.SecretTypeOpaque),
@@ -170,7 +174,7 @@ func TestRegenerateSecrets(t *testing.T) {
 	}
 }
 
-func TestDoNotRegenerateSecrets(t *testing.T) {
+func TestControllerDoNotRegenerateSecret(t *testing.T) {
 	testSpec := v1alpha1.SSHKeyPairSpec{
 		Length:          "40",
 		Type:            string(corev1.SecretTypeOpaque),
@@ -212,7 +216,7 @@ func TestDoNotRegenerateSecrets(t *testing.T) {
 	}
 }
 
-func TestDoNotRegenerateSecretsFixMissingPublicKey(t *testing.T) {
+func TestControllerDoNotRegenerateSSHSecretFixMissingPublicKey(t *testing.T) {
 	testSpec := v1alpha1.SSHKeyPairSpec{
 		Length:          "40",
 		Type:            string(corev1.SecretTypeOpaque),
@@ -258,7 +262,7 @@ func TestDoNotRegenerateSecretsFixMissingPublicKey(t *testing.T) {
 	}
 }
 
-func TestRegeneratePublicKey(t *testing.T) {
+func TestControllerRegeneratePublicKey(t *testing.T) {
 	keyPair, err := secret.GenerateSSHKeypair(40)
 	require.NoError(t, err)
 	testSpec := v1alpha1.SSHKeyPairSpec{
@@ -286,7 +290,7 @@ func TestRegeneratePublicKey(t *testing.T) {
 	}
 }
 
-func TestSSHControllerDoNotTouchOtherSecrets(t *testing.T) {
+func TestControllerDoNotTouchOtherSSHSecrets(t *testing.T) {
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{

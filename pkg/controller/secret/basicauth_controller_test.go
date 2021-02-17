@@ -24,6 +24,7 @@ import (
 
 const testUsername = "testuser123"
 
+// newBasicAuthTestCR reurns a BasicAuth custom resource. If name is set to "", a uuid will be generated
 func newBasicAuthTestCR(authSpec v1alpha1.BasicAuthSpec, name string) *v1alpha1.BasicAuth {
 	if name == "" {
 		name = uuid.New().String()
@@ -46,6 +47,7 @@ func newBasicAuthTestCR(authSpec v1alpha1.BasicAuthSpec, name string) *v1alpha1.
 	return cr
 }
 
+// verifyBasicAuthSecretFromCR verifies that the given Secret was correctly created from the given cr
 func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *corev1.Secret) {
 	// Check for correct ownership
 	for index := range out.OwnerReferences {
@@ -64,14 +66,14 @@ func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *core
 
 	auth := out.Data[secret.SecretFieldBasicAuthIngress]
 	password := out.Data[secret.SecretFieldBasicAuthPassword]
-	desiredLength, _, err := crd.ParseByteLength(secret.SecretLength(), in.Spec.Length)
+	length, _, err := crd.ParseByteLength(secret.SecretLength(), in.Spec.Length)
 	if err != nil {
 		t.Error("Failed to determine secret length")
 	}
 
 	// check if password has been saved in clear text
 	// and has correct length (if the secret has actually been generated)
-	if len(password) == 0 || len(password) != desiredLength {
+	if len(password) == 0 || len(password) != length {
 		t.Errorf("generated field has wrong length of %d", len(password))
 	}
 
@@ -168,7 +170,7 @@ func TestControllerGenerateBasicAuthNoRegenerate(t *testing.T) {
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding:        "base64",
 		Length:          "40",
-		Username:        "Hans",
+		Username:        testUsername,
 		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: false,
@@ -188,8 +190,8 @@ func TestControllerGenerateBasicAuthNoRegenerate(t *testing.T) {
 
 	verifyBasicAuthSecretFromCR(t, in, out)
 
-	in.Spec.Username = "Hugo"
-	in.Spec.Length = "35"
+	// modify cr to trigger update
+	in.Spec.Username = "AnotherTestUser"
 	doReconcileBasicAuthController(t, in, false)
 
 	outNew := &corev1.Secret{}
@@ -200,6 +202,7 @@ func TestControllerGenerateBasicAuthNoRegenerate(t *testing.T) {
 	newPassword := string(outNew.Data[secret.SecretFieldBasicAuthPassword])
 	newAuth := string(outNew.Data[secret.SecretFieldBasicAuthIngress])
 
+	// ensure values before and after update are the same
 	if oldPassword != newPassword {
 		t.Errorf("secret has been updated")
 	}
@@ -213,7 +216,7 @@ func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding:        "base64",
 		Length:          "40",
-		Username:        "Hans",
+		Username:        testUsername,
 		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: true,
@@ -233,8 +236,8 @@ func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 
 	verifyBasicAuthSecretFromCR(t, in, out)
 
-	in.Spec.Username = "Hugo"
-	in.Spec.Length = "35"
+	// modify cr to trigger update
+	in.Spec.Username = "AnotherTestUser"
 	doReconcileBasicAuthController(t, in, false)
 
 	outNew := &corev1.Secret{}
@@ -245,6 +248,7 @@ func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 	newPassword := string(outNew.Data[secret.SecretFieldBasicAuthPassword])
 	newAuth := string(outNew.Data[secret.SecretFieldBasicAuthIngress])
 
+	// ensure secret has been updated
 	if oldPassword == newPassword {
 		t.Errorf("secret has not been updated")
 	}
@@ -255,7 +259,7 @@ func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 }
 
 func TestControllerDoNotTouchOtherSecrets(t *testing.T) {
-	secret := &corev1.Secret{
+	testSecret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      testSecretName,
@@ -271,7 +275,8 @@ func TestControllerDoNotTouchOtherSecrets(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, mgr.GetClient().Create(context.TODO(), secret))
+	// create secret not owned by cr
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), testSecret))
 
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding:        "base64",
@@ -289,11 +294,12 @@ func TestControllerDoNotTouchOtherSecrets(t *testing.T) {
 
 	out := &corev1.Secret{}
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
-		Name:      secret.Name,
-		Namespace: secret.Namespace}, out))
+		Name:      testSecret.Name,
+		Namespace: testSecret.Namespace}, out))
 
-	if !reflect.DeepEqual(secret, out) {
-		t.Errorf("secret not owned by BasicAuth cr has been reconciled")
+	// ensure secret has not been modified
+	if !reflect.DeepEqual(testSecret, out) {
+		t.Errorf("testSecret not owned by BasicAuth cr has been reconciled")
 	}
-	require.NoError(t, mgr.GetClient().Delete(context.TODO(), secret))
+	require.NoError(t, mgr.GetClient().Delete(context.TODO(), testSecret))
 }

@@ -50,7 +50,7 @@ type ReconcileStringSecret struct {
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("string-secret-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("stringsecret-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (r *ReconcileStringSecret) Reconcile(request reconcile.Request) (reconcile.
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling StringSecret")
 	ctx := context.Background()
-	// Fetch the StringSecret instance
+	// fetch the StringSecret instance
 	instance := &v1alpha1.StringSecret{}
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
@@ -109,7 +109,7 @@ func (r *ReconcileStringSecret) Reconcile(request reconcile.Request) (reconcile.
 }
 
 // updateSecret attempts to update an existing Secret object with new values. Secret will only be updated,
-// if it is owned by a StringSecret CR.
+// if it is owned by a StringSecret cr.
 func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1alpha1.StringSecret, existing *v1.Secret, reqLogger logr.Logger) (reconcile.Result, error) {
 	// check if secret was created by this cr
 	existingOwnerRefs := existing.OwnerReferences
@@ -142,6 +142,7 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 
 	values := existing.Data
 
+	// populate values from data first
 	for key := range data {
 		if string(values[key]) == "" || regenerate {
 			values[key] = []byte(data[key])
@@ -172,7 +173,7 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 
 // createNewSecret creates a new string secret from the provided values. The Secret's owner will be set
 // as the StringSecret that is being reconciled and a reference to the Secret will be stored in
-// the CR's status
+// the cr's status
 func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v1alpha1.StringSecret, reqLogger logr.Logger) (reconcile.Result, error) {
 	fieldNames := instance.Spec.FieldNames
 	length := instance.Spec.Length
@@ -202,23 +203,6 @@ func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v
 	}
 
 	return r.clientCreateNewSecret(ctx, values, secretType, instance)
-}
-
-// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
-func (r *ReconcileStringSecret) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.StringSecret) error {
-	// get Secret reference for status
-	stringRef, err := reference.GetReference(r.scheme, desiredSecret)
-	if err != nil {
-		return err
-	}
-	status := instance.GetStatus()
-	status.SetSecret(stringRef)
-
-	if err = r.client.Status().Update(ctx, instance); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // clientCreateNewSecret creates a new Secret resource, uses the client to save it to the cluster and gets its resource
@@ -258,4 +242,21 @@ func (r *ReconcileStringSecret) clientUpdateSecret(ctx context.Context, targetSe
 		return reconcile.Result{Requeue: true}, err
 	}
 	return reconcile.Result{}, nil
+}
+
+// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
+func (r *ReconcileStringSecret) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.StringSecret) error {
+	// get Secret reference for status
+	stringRef, err := reference.GetReference(r.scheme, desiredSecret)
+	if err != nil {
+		return err
+	}
+	status := instance.GetStatus()
+	status.SetSecret(stringRef)
+
+	if err = r.client.Status().Update(ctx, instance); err != nil {
+		return err
+	}
+
+	return nil
 }

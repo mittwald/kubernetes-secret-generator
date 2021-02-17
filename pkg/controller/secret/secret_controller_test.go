@@ -58,6 +58,7 @@ func TestMain(m *testing.M) {
 		},
 	}
 
+	// add custom resources to scheme
 	err = v1alpha1.AddToScheme(scheme.Scheme)
 	if err != nil {
 		panic(err)
@@ -99,7 +100,7 @@ func reset() {
 	}
 
 	for _, s := range list.Items {
-		err := mgr.GetClient().Delete(context.TODO(), &s)
+		err = mgr.GetClient().Delete(context.TODO(), &s)
 		if err != nil {
 			panic(err)
 		}
@@ -117,7 +118,7 @@ func reset() {
 	}
 
 	for _, s := range sshList.Items {
-		err := mgr.GetClient().Delete(context.TODO(), &s)
+		err = mgr.GetClient().Delete(context.TODO(), &s)
 		if err != nil {
 			panic(err)
 		}
@@ -135,7 +136,7 @@ func reset() {
 	}
 
 	for _, s := range stringSecretList.Items {
-		err := mgr.GetClient().Delete(context.TODO(), &s)
+		err = mgr.GetClient().Delete(context.TODO(), &s)
 		if err != nil {
 			panic(err)
 		}
@@ -153,7 +154,7 @@ func reset() {
 	}
 
 	for _, s := range basicAuthList.Items {
-		err := mgr.GetClient().Delete(context.TODO(), &s)
+		err = mgr.GetClient().Delete(context.TODO(), &s)
 		if err != nil {
 			panic(err)
 		}
