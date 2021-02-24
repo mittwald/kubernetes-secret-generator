@@ -192,6 +192,7 @@ All crs support the field `spec.type` which can be used to define the kubernetes
 A `StringSecret` resource can be used to generate secure random strings similar to the ones offered by the annotation approach.
 Desired Fields to be randomly generated can be supplied via the `spec.fieldNames` property, which supports a list of strings.
 Secret length and encoding can be specified using `spec.length` and `spec.encoding` properties and have the same options as annotation based generation.
+Alternatively, the `spec.fields` property can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same seret object. This may be desirable if the generated values are related and splitting them into separate secrets would be less intuitive. It is possible to use both options at the same time, i.e. some values can be specified using `spec.fieldNames`, while others are specified using `spec.fields`. Fields defined in `spec.fields` have priority if the same field name is specified in both `spec.fields` and `spec.fieldnames`.
 The `spec.data` property can be used to specify arbitrary data entries the generated secret's `data` property should be populated with.
 Finally, the `spec.forceRegenerate` property can be used to control regeneration of secret fields.
 
@@ -211,6 +212,10 @@ spec:
   - "password"
   data:
     username: "testuser"
+  fields:
+    - fieldName: "test"
+      encoding: "hex"
+      length: "15"
 ```
 
 Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications. If successful, the new resource will have its owner set as `StringSecret` used to create it, providing automated deletion/updating of the secret if the creating cr is deleted/updated. The `StringSecret` will store an object reference to the created `Secret` in its status field.

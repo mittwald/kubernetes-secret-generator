@@ -16,6 +16,7 @@ func (in *StringSecret) DeepCopyInto(out *StringSecret) {
 		Data:            in.Spec.Data,
 		Type:            in.Spec.Type,
 		ForceRegenerate: in.Spec.ForceRegenerate,
+		Fields:          in.Spec.Fields,
 	}
 	out.Status = SecretStatus{
 		Secret: in.Status.Secret,

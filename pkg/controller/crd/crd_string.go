@@ -38,7 +38,12 @@ func NewSecret(ownerCR metav1.Object, values map[string][]byte, secretType strin
 
 func ParseByteLength(fallback int, length string) (int, bool, error) {
 	isByteLength := false
+
 	lengthString := strings.ToLower(length)
+	if len(lengthString) == 0 {
+		return fallback, isByteLength, nil
+	}
+
 	if strings.HasSuffix(lengthString, secret.ByteSuffix) {
 		isByteLength = true
 	}

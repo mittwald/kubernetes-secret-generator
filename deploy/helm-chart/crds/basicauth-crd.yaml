@@ -18,5 +18,23 @@ spec:
         openAPIV3Schema:
           type: object
           x-kubernetes-preserve-unknown-fields: true
+          properties:
+            spec:
+              type: object
+              properties:
+                type:
+                  type: string
+                forceRegenerate:
+                  type: boolean
+                length:
+                  type: string
+                encoding:
+                  type: string
+                  enum: [ "base64", "raw", "base32", "hex", "base64url" ]
+                username:
+                  type: string
+                data:
+                  type: object
+                  additionalProperties: true
       subresources:
         status: {}

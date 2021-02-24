@@ -61,9 +61,24 @@ func verifyStringSecretFromCR(t *testing.T, in *v1alpha1.StringSecret, out *core
 		t.Error("generated secret not referenced in CR status")
 	}
 
-	desiredLength, _, err := crd.ParseByteLength(secret.SecretLength(), in.Spec.Length)
-	if err != nil {
-		t.Error("Failed to determine secret length")
+	for _, field := range in.Spec.Fields {
+		fieldName := field.FieldName
+
+		val, ok := out.Data[fieldName]
+		if !ok {
+			t.Error("secret value has not been generated")
+		}
+
+		secLength, _, err := crd.ParseByteLength(secret.SecretLength(), field.Length)
+		if err != nil {
+			t.Error("Failed to determine secret length")
+		}
+
+		if len(val) != secLength {
+			t.Errorf("generated field has wrong length of %d", len(val))
+		}
+
+		t.Logf("generated secret value: %s", val)
 	}
 
 	for _, key := range in.Spec.FieldNames {
@@ -72,7 +87,12 @@ func verifyStringSecretFromCR(t *testing.T, in *v1alpha1.StringSecret, out *core
 			t.Error("secret value has not been generated")
 		}
 
-		if len(val) != desiredLength {
+		secLength, _, err := crd.ParseByteLength(secret.SecretLength(), in.Spec.Length)
+		if err != nil {
+			t.Error("Failed to determine secret length")
+		}
+
+		if len(val) != secLength {
 			t.Errorf("generated field has wrong length of %d", len(val))
 		}
 
@@ -94,7 +114,7 @@ func doReconcileStringSecretController(t *testing.T, stringSecret *v1alpha1.Stri
 	require.False(t, res.Requeue)
 }
 
-func TestControllerGenerateSecretSingleField(t *testing.T) {
+func TestControllerGenerateSecretSingleFieldLegacy(t *testing.T) {
 	testSpec := v1alpha1.StringSecretSpec{
 		Encoding:   "base64",
 		Length:     "40",
@@ -124,13 +144,88 @@ func TestControllerGenerateSecretSingleField(t *testing.T) {
 	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
 }
 
-func TestControllerGenerateSecretMultipleFields(t *testing.T) {
+func TestControllerGenerateSecretSingleField(t *testing.T) {
+	testSpec := v1alpha1.StringSecretSpec{
+		Type: string(corev1.SecretTypeOpaque),
+		Data: map[string]string{},
+		Fields: []v1alpha1.Field{v1alpha1.Field{
+			FieldName: "test",
+			Encoding:  "base64",
+			Length:    "40",
+		}},
+	}
+	in := newStringSecretTestCR(testSpec, "")
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcileStringSecretController(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+
+	verifyStringSecretFromCR(t, in, out)
+
+	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
+	// give deletion time to be processed
+	time.Sleep(1 * time.Second)
+	out = &corev1.Secret{}
+	err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out)
+	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
+}
+
+func TestControllerGenerateSecretSingleFieldMixed(t *testing.T) {
 	testSpec := v1alpha1.StringSecretSpec{
 		Encoding:   "base64",
 		Length:     "40",
 		Type:       string(corev1.SecretTypeOpaque),
 		Data:       map[string]string{},
-		FieldNames: []string{"test", "test2"},
+		FieldNames: []string{"test"},
+		Fields: []v1alpha1.Field{v1alpha1.Field{
+			FieldName: "test2",
+			Encoding:  "base64",
+			Length:    "40",
+		}},
+	}
+	in := newStringSecretTestCR(testSpec, "")
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcileStringSecretController(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+
+	verifyStringSecretFromCR(t, in, out)
+
+	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
+	// give deletion time to be processed
+	time.Sleep(1 * time.Second)
+	out = &corev1.Secret{}
+	err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out)
+	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
+}
+
+func TestControllerGenerateSecretMultipleFields(t *testing.T) {
+	testSpec := v1alpha1.StringSecretSpec{
+		Type: string(corev1.SecretTypeOpaque),
+		Data: map[string]string{},
+		Fields: []v1alpha1.Field{{
+			FieldName: "test",
+			Encoding:  "base64",
+			Length:    "40",
+		},
+			{
+				FieldName: "test2",
+				Encoding:  "base32",
+				Length:    "35",
+			},
+		},
 	}
 	in := newStringSecretTestCR(testSpec, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
@@ -147,11 +242,13 @@ func TestControllerGenerateSecretMultipleFields(t *testing.T) {
 
 func TestRegenerateSecretsSingleField(t *testing.T) {
 	testSpec := v1alpha1.StringSecretSpec{
-		Encoding:        "base64",
-		Length:          "40",
-		Type:            string(corev1.SecretTypeOpaque),
-		Data:            map[string]string{},
-		FieldNames:      []string{"test"},
+		Type: string(corev1.SecretTypeOpaque),
+		Data: map[string]string{},
+		Fields: []v1alpha1.Field{v1alpha1.Field{
+			FieldName: "test",
+			Encoding:  "base64",
+			Length:    "40",
+		}},
 		ForceRegenerate: true,
 	}
 	in := newStringSecretTestCR(testSpec, "")
@@ -186,11 +283,19 @@ func TestRegenerateSecretsSingleField(t *testing.T) {
 
 func TestRegenerateSecretsmultipleFields(t *testing.T) {
 	testSpec := v1alpha1.StringSecretSpec{
-		Encoding:        "base64",
-		Length:          "40",
-		Type:            string(corev1.SecretTypeOpaque),
-		Data:            map[string]string{},
-		FieldNames:      []string{"test", "test2"},
+		Type: string(corev1.SecretTypeOpaque),
+		Data: map[string]string{},
+		Fields: []v1alpha1.Field{{
+			FieldName: "test",
+			Encoding:  "base64",
+			Length:    "40",
+		},
+			{
+				FieldName: "test2",
+				Encoding:  "base32",
+				Length:    "35",
+			},
+		},
 		ForceRegenerate: true,
 	}
 	in := newStringSecretTestCR(testSpec, "")

@@ -11,6 +11,13 @@ type StringSecretSpec struct {
 	FieldNames      []string          `json:"fieldNames,omitempty"`
 	Data            map[string]string `json:"data,omitempty"`
 	ForceRegenerate bool              `json:"forceRegenerate,omitempty"`
+	Fields          []Field           `json:"fields,omitempty"`
+}
+
+type Field struct {
+	FieldName string `json:"fieldName,omitempty"`
+	Encoding  string `json:"encoding,omitempty"`
+	Length    string `json:"length,omitempty"`
 }
 
 type StringSecret struct {

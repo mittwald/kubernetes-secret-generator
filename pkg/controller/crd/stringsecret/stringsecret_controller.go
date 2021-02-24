@@ -129,16 +129,11 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 	}
 
 	fieldNames := instance.Spec.FieldNames
+	fields := instance.Spec.Fields
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
 	regenerate := instance.Spec.ForceRegenerate
 	data := instance.Spec.Data
-
-	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
-	if err != nil {
-		reqLogger.Error(err, "could not parse length for new random string")
-		return reconcile.Result{RequeueAfter: time.Second * 30}, err
-	}
 
 	values := existing.Data
 
@@ -150,8 +145,30 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 	}
 
 	// generate only empty fields if regenerate wasn't set to true
+	for _, field := range fields {
+		if string(values[field.FieldName]) == "" || regenerate {
+			secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), field.Length)
+			if err != nil {
+				reqLogger.Error(err, "could not parse length from map for new random string")
+				return reconcile.Result{RequeueAfter: time.Second * 30}, err
+			}
+			randomString, randErr := secret.GenerateRandomString(secretLength, field.Encoding, isByteLength)
+			if randErr != nil {
+				reqLogger.Error(err, "could not generate new random string")
+				return reconcile.Result{RequeueAfter: time.Second * 30}, err
+			}
+			values[field.FieldName] = randomString
+		}
+	}
+
 	for _, field := range fieldNames {
 		if string(values[field]) == "" || regenerate {
+			secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
+			if err != nil {
+				reqLogger.Error(err, "could not parse length from map for new random string")
+				return reconcile.Result{RequeueAfter: time.Second * 30}, err
+			}
+
 			randomString, randErr := secret.GenerateRandomString(secretLength, encoding, isByteLength)
 			if randErr != nil {
 				reqLogger.Error(err, "could not generate new random string")
@@ -176,16 +193,11 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 // the cr's status
 func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v1alpha1.StringSecret, reqLogger logr.Logger) (reconcile.Result, error) {
 	fieldNames := instance.Spec.FieldNames
+	fields := instance.Spec.Fields
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
 	data := instance.Spec.Data
 	secretType := instance.Spec.Type
-
-	secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
-	if err != nil {
-		reqLogger.Error(err, "could not parse length for new random string")
-		return reconcile.Result{RequeueAfter: time.Second * 30}, err
-	}
 
 	values := make(map[string][]byte)
 
@@ -193,7 +205,31 @@ func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v
 		values[key] = []byte(data[key])
 	}
 
+	// generate only empty fields if regenerate wasn't set to true
+	for _, field := range fields {
+		secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), field.Length)
+		if err != nil {
+			reqLogger.Error(err, "could not parse length from map for new random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
+		randomString, randErr := secret.GenerateRandomString(secretLength, field.Encoding, isByteLength)
+		if randErr != nil {
+			reqLogger.Error(err, "could not generate new random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
+		values[field.FieldName] = randomString
+	}
+
 	for _, field := range fieldNames {
+		if string(values[field]) != "" {
+			// field has already been created from spec.fields, don't recreate
+			continue
+		}
+		secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
+		if err != nil {
+			reqLogger.Error(err, "could not parse length from map for new random string")
+			return reconcile.Result{RequeueAfter: time.Second * 30}, err
+		}
 		randomString, randErr := secret.GenerateRandomString(secretLength, encoding, isByteLength)
 		if randErr != nil {
 			reqLogger.Error(err, "could not generate new random string")
