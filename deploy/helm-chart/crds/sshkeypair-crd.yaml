@@ -33,6 +33,8 @@ spec:
                   enum: [ "base64", "raw", "base32", "hex", "base64url" ]
                 username:
                   type: string
+                privateKey:
+                  type: string
                 data:
                   type: object
                   additionalProperties: true
