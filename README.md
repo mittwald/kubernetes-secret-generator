@@ -105,7 +105,7 @@ kind: Secret
 metadata:
   name: string-secret
   annotations:
-    secret-generator.v1.mittwald.de/type: stringsecret
+    secret-generator.v1.mittwald.de/type: string
     secret-generator.v1.mittwald.de/secure: "yes"
     secret-generator.v1.mittwald.de/autogenerate: password
     secret-generator.v1.mittwald.de/autogenerate-generated-at: "2020-04-03T14:07:47+02:00"
@@ -187,12 +187,12 @@ data:
 The operator supports three kinds of custom resources: `StringSecret`, `SSHKeyPair` and `BasicAuth`. These crs can be used to trigger creation, update and deletion of desired secrets.
 All crs support the field `spec.type` which can be used to define the kubernetes type of the generated `Secret`, e.g. "Opaque"
 
-### Secure random strings
+### Secure Random Strings via StringSecret-CR
 
 A `StringSecret` resource can be used to generate secure random strings similar to the ones offered by the annotation approach.
 Desired Fields to be randomly generated can be supplied via the `spec.fieldNames` property, which supports a list of strings.
-Secret length and encoding can be specified using `spec.length` and `spec.encoding` properties and have the same options as annotation based generation.
-Alternatively, the `spec.fields` property can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same seret object. This may be desirable if the generated values are related and splitting them into separate secrets would be less intuitive. It is possible to use both options at the same time, i.e. some values can be specified using `spec.fieldNames`, while others are specified using `spec.fields`. Fields defined in `spec.fields` have priority if the same field name is specified in both `spec.fields` and `spec.fieldnames`.
+Secret length and encoding can be specified using the `spec.length` and `spec.encoding` properties and have the same options as annotation based generation.
+Alternatively, the `spec.fields` property can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same secret object. This may be desirable if the generated values are related and splitting them into separate secrets would be less intuitive. It is possible to use both options at the same time, i.e. some values can be specified using `spec.fieldNames`, while others are specified using `spec.fields`. Values defined in `spec.fields` have priority if the same field name is specified in both `spec.fields` and `spec.fieldnames`.
 The `spec.data` property can be used to specify arbitrary data entries the generated secret's `data` property should be populated with.
 Finally, the `spec.forceRegenerate` property can be used to control regeneration of secret fields.
 
@@ -218,11 +218,11 @@ spec:
       length: "15"
 ```
 
-Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications. If successful, the new resource will have its owner set as `StringSecret` used to create it, providing automated deletion/updating of the secret if the creating cr is deleted/updated. The `StringSecret` will store an object reference to the created `Secret` in its status field.
-During updating, any new fields in `spec.data` or `spec.fieldnames` will be added, while existing fields will only be overwritten/regenerated, if `spec.forceRegenerate` is set to true. 
+Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications. If successful, the new resource will have its owner set as the `StringSecret` used to create it, providing automated deletion/updating of the secret if the creating cr is deleted/updated. The `StringSecret` will store an object reference to the created `Secret` in its status field.
+During updating, any new fields in `spec.data`, `spec.fieldnames` and `spec.fields` will be added, while existing fields will only be overwritten/regenerated if `spec.forceRegenerate` is set to `true`.
 If the target `Secret` already exists and is not owned by a `StringSecret` resource, no changes will be made to ìt.
 
-### SSH Key Pair
+### SSH Key Pair via SSHKeyPair-CR
 
 A `SSHKeyPair` resource can be used to generate an ssh key pair. It supports `spec.length`, `spec.data` and `spec.forceRegenerate` similar to `StringSecret` resources.
 The field `spec.privateKey` can be used to specify a private key, which will be used during runtime to regenerate a matching public key.
@@ -241,7 +241,7 @@ spec:
     example: "data"
 ```
 
-### Ingress Basic Auth
+### Ingress Basic Auth via BasicAuth-CR
 
 A `BasicAuth` resource can be used to generate Ingress Basic Auth credentials. Supported properties are `spec.length`, `spec.encoding`, `spec.data` and `spec.forceRegenerate`.
 To specify a username, use `spec.username`. If no username is provided, the operator will use `admin`.
