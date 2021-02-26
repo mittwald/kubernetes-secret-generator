@@ -81,6 +81,13 @@ func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *core
 	if len(auth) == 0 || !strings.Contains(string(auth), ":") {
 		t.Errorf("auth field has wrong or no values %s", string(auth))
 	}
+
+	// check if custom data entries were set correctly
+	for _, key := range in.Spec.Data {
+		if _, ok := out.Data[key]; !ok {
+			t.Errorf("missing data entry %s", key)
+		}
+	}
 }
 
 func TestControllerGenerateBasicAuthWithoutUsername(t *testing.T) {

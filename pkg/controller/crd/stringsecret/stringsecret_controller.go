@@ -147,7 +147,7 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 
 	// set values first for entries in fieldNames, so that in case of the same entry being in fields,
 	// the fields entry is given priority and ends up being set for the secret
-	err := setValuesForFieldNames(fieldNames, regenerate, length, encoding, values)
+	err := setValuesForFieldNames(fieldNames, regenerate, SecretContraints{encoding, length}, values)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
@@ -186,7 +186,7 @@ func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v
 
 	// set values first for entries in fieldNames, so that in case of the same entry being in fields,
 	// the fields entry is given priority and ends up being set for the secret.
-	err := setValuesForFieldNames(fieldNames, true, length, encoding, values)
+	err := setValuesForFieldNames(fieldNames, true, SecretContraints{encoding, length}, values)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
@@ -224,16 +224,16 @@ func setValuesForFields(fields []v1alpha1.Field, regenerate bool, values map[str
 
 // setValuesForFieldNames iterates over the given list of field-names and generates new random strings if the corresponding entry is empty or
 // regeneration is forced
-func setValuesForFieldNames(fieldNames []string, regenerate bool, length string, encoding string, values map[string][]byte) error {
+func setValuesForFieldNames(fieldNames []string, regenerate bool, constraints SecretContraints, values map[string][]byte) error {
 	for _, field := range fieldNames {
 		if string(values[field]) == "" || regenerate {
-			secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), length)
+			secretLength, isByteLength, err := crd.ParseByteLength(secret.SecretLength(), constraints.Length)
 			if err != nil {
 				reqLogger.Error(err, "could not parse length from map for new random string")
 				return err
 			}
 
-			randomString, randErr := secret.GenerateRandomString(secretLength, encoding, isByteLength)
+			randomString, randErr := secret.GenerateRandomString(secretLength, constraints.Encoding, isByteLength)
 			if randErr != nil {
 				reqLogger.Error(err, "could not generate new random string")
 				return err
@@ -299,4 +299,9 @@ func (r *ReconcileStringSecret) getSecretRefAndSetStatus(ctx context.Context, de
 	}
 
 	return nil
+}
+
+type SecretContraints struct {
+	Encoding string
+	Length   string
 }

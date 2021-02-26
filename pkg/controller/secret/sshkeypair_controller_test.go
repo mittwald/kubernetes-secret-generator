@@ -88,6 +88,13 @@ func verifySSHSecretFromCR(t *testing.T, in *v1alpha1.SSHKeyPair, out *corev1.Se
 	if !bytes.Equal(publicKey, pub) {
 		t.Error("publicKey doesn't match private key")
 	}
+
+	// check if custom data entries were set correctly
+	for _, key := range in.Spec.Data {
+		if _, ok := out.Data[key]; !ok {
+			t.Errorf("missing data entry %s", key)
+		}
+	}
 }
 
 func doReconcileSSHKeyPairController(t *testing.T, sshKeyPair *v1alpha1.SSHKeyPair, isErr bool) {
