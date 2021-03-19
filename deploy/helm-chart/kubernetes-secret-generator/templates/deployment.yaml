@@ -45,7 +45,7 @@ spec:
             periodSeconds: 3
           env:
             - name: WATCH_NAMESPACE
-              value: {{ .Values.watchNamespace }}
+              value: {{ template "kubernetes-secret-generator.watchNamespace" . }}
             - name: POD_NAME
               valueFrom:
                 fieldRef:

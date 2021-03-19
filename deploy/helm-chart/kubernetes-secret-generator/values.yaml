@@ -53,3 +53,11 @@ secretLength: 40
 # Accepts a comma-separated list of namespaces: ns1,ns2
 # If set to "", all namespaces will be watched
 watchNamespace: ""
+
+## RBAC parameteres
+## https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+##
+rbac:
+  create: true
+  ## Deploys ClusterRole by Default
+  clusterRole: true
