@@ -52,12 +52,15 @@ secretLength: 40
 # Namespace that are watched for secret generation
 # Accepts a comma-separated list of namespaces: ns1,ns2
 # If set to "", all namespaces will be watched
+# Accessing secrets in namespaces other than the deployed one requires permissions via a cluster role (on by default)
 watchNamespace: ""
 
-## RBAC parameteres
-## https://kubernetes.io/docs/reference/access-authn-authz/rbac/
-##
+# RBAC parameteres
+# https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 rbac:
+  # Disables creation of rbac resources
   create: true
-  ## Deploys ClusterRole by Default
+  # The cluster role allows access to all namespaces in the cluster.
+  # Set to false to restrict access to the deployed namespace only.
+  # ClusterRole is deployed by Default
   clusterRole: true

@@ -24,6 +24,12 @@ Multiple namespaces are supported and can be set as a comma-separated list: `ns1
 
   If `watchNamespace` is set to the empty string value `""`, all namespaces will be watched.
 
+- `rbac.create` controls if rbac resources are deployed.
+
+- `rbac.clusterRole` controls if secrets generator has permission to watch secrets in namespaces other than where it has been deployed.
+
+  `rbac.clusterRole=false & watchNamespace=""` will result in `watchNamespace` being set to the current namespace as this is all the permissions will allow access to.
+
 Afterwards, deploy the operator using:
 
 1. Add the [Mittwald Charts Repo](https://github.com/mittwald/helm-charts/blob/master/README.md#usage):
