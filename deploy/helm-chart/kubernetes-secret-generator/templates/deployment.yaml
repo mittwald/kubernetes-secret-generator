@@ -6,6 +6,8 @@ metadata:
   {{- include "kubernetes-secret-generator.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
   {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 6 }}
