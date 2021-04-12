@@ -5,7 +5,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
@@ -38,7 +37,6 @@ func getSecretName() string {
 }
 
 func TestMain(m *testing.M) {
-	time.Sleep(22 * time.Second)
 	cfgPath := os.Getenv("KUBECONFIG")
 	cfg, err := clientcmd.BuildConfigFromFlags("", cfgPath)
 
