@@ -28,8 +28,8 @@ func newSSHKeyPairTestCR(sshSpec v1alpha1.SSHKeyPairSpec, name string) *v1alpha1
 	}
 	cr := &v1alpha1.SSHKeyPair{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "mittwald.systems/v1alpha1",
-			Kind:       "StringSecret",
+			APIVersion: apiVersion,
+			Kind:       sshkeypair.Kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

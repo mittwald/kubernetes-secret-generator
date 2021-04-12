@@ -22,6 +22,7 @@ import (
 )
 
 const testSecretName = "testsec123"
+const apiVersion = "mittwald.systems/v1alpha1"
 
 // newStringSecretTestCR creates a new StringSecret CR with given spec and name. If name is "", a uuid will be generated
 func newStringSecretTestCR(stringSpec v1alpha1.StringSecretSpec, name string) *v1alpha1.StringSecret {
@@ -30,8 +31,8 @@ func newStringSecretTestCR(stringSpec v1alpha1.StringSecretSpec, name string) *v
 	}
 	cr := &v1alpha1.StringSecret{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "mittwald.systems/v1alpha1",
-			Kind:       "StringSecret",
+			APIVersion: apiVersion,
+			Kind:       stringsecret.Kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -237,22 +238,6 @@ func TestControllerGenerateSecretSingleFieldMixed(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, out)
 	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
-}
-
-func TestNewSecret(t *testing.T) {
-	owner := v1alpha1.StringSecret{}
-	owner.Name = "testSecret"
-	owner.Namespace = "testns"
-	owner.Labels = map[string]string{"test": "test"}
-
-	data := map[string][]byte{"test": []byte("blah")}
-
-	target, err := crd.NewSecret(&owner, data, "opaque")
-	require.NoError(t, err)
-	require.Equal(t, "testSecret", target.Name)
-	require.Equal(t, "testns", target.Namespace)
-	require.Equal(t, map[string]string{"test": "test"}, target.Labels)
-
 }
 
 func TestControllerGenerateSecretMultipleFields(t *testing.T) {
@@ -518,4 +503,48 @@ func TestDoNotTouchOtherSecrets(t *testing.T) {
 		t.Errorf("secret not owned by StringSecret cr has been reconciled")
 	}
 	require.NoError(t, mgr.GetClient().Delete(context.TODO(), secret))
+}
+
+func TestNewSecret(t *testing.T) {
+	owner := v1alpha1.StringSecret{}
+	owner.Name = "testSecret"
+	owner.Namespace = "testns"
+	owner.Labels = map[string]string{"test": "test"}
+
+	data := map[string][]byte{"test": []byte("blah")}
+
+	target, err := crd.NewSecret(&owner, data, "opaque")
+	require.NoError(t, err)
+	require.Equal(t, "testSecret", target.Name)
+	require.Equal(t, "testns", target.Namespace)
+	require.Equal(t, map[string]string{"test": "test"}, target.Labels)
+
+}
+
+func TestParseByteLength(t *testing.T) {
+	fallback := 15
+	length, isByte, err := crd.ParseByteLength(fallback, "20")
+	require.NoError(t, err)
+	require.Equal(t, 20, length)
+	require.Equal(t, false, isByte)
+
+	length, isByte, err = crd.ParseByteLength(fallback, "20B")
+	require.NoError(t, err)
+	require.Equal(t, 20, length)
+	require.Equal(t, true, isByte)
+
+	length, isByte, err = crd.ParseByteLength(fallback, "20b")
+	require.NoError(t, err)
+	require.Equal(t, 20, length)
+	require.Equal(t, true, isByte)
+
+	length, isByte, err = crd.ParseByteLength(fallback, "")
+	require.NoError(t, err)
+	require.Equal(t, fallback, length)
+	require.Equal(t, false, isByte)
+
+	length, isByte, err = crd.ParseByteLength(fallback, "sdsdsd")
+	require.Error(t, err)
+	require.Equal(t, fallback, length)
+	require.Equal(t, false, isByte)
 }

@@ -28,11 +28,6 @@ spec:
                   type: boolean
                 length:
                   type: string
-                encoding:
-                  type: string
-                  enum: [ "base64", "raw", "base32", "hex", "base64url" ]
-                username:
-                  type: string
                 privateKey:
                   type: string
                 data:

@@ -31,8 +31,8 @@ func newBasicAuthTestCR(authSpec v1alpha1.BasicAuthSpec, name string) *v1alpha1.
 	}
 	cr := &v1alpha1.BasicAuth{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "mittwald.systems/v1alpha1",
-			Kind:       "BasicAuth",
+			APIVersion: apiVersion,
+			Kind:       basicauth.Kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

@@ -10,11 +10,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
+// NewSecret creates an new Secret with given owner-info, type and data values
 func NewSecret(ownerCR metav1.Object, values map[string][]byte, secretType string) (*corev1.Secret, error) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -36,6 +39,8 @@ func NewSecret(ownerCR metav1.Object, values map[string][]byte, secretType strin
 	return secret, nil
 }
 
+// ParseByteLength parses the given length string into an integer length and determines whether the byte-length-suffix was set.
+// In case paring fails, or the string is empty, the fallback will be returned, along with false.
 func ParseByteLength(fallback int, length string) (int, bool, error) {
 	isByteLength := false
 
@@ -66,4 +71,18 @@ func CheckError(err error) (reconcile.Result, error) {
 	}
 	// Error reading the object - requeue the request.
 	return reconcile.Result{Requeue: true}, err
+}
+
+// IgnoreStatusUpdatePredicate is a reconciler predicate that will allow the reconciler to ignore updates that only change a cr's status
+func IgnoreStatusUpdatePredicate() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			// Ignore updates to CR status in which case metadata.Generation does not change
+			return e.MetaOld.GetGeneration() != e.MetaNew.GetGeneration()
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Evaluates to false if the object has been confirmed deleted.
+			return !e.DeleteStateUnknown
+		},
+	}
 }
