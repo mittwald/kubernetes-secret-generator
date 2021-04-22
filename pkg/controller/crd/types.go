@@ -1,6 +1,7 @@
 package crd
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
@@ -8,12 +9,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/reference"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
@@ -85,4 +90,63 @@ func IgnoreStatusUpdatePredicate() predicate.Predicate {
 			return !e.DeleteStateUnknown
 		},
 	}
+}
+
+type Client struct {
+	client.Client
+}
+
+// ClientCreateSecret creates a new Secret resource, uses the client to save it to the cluster and gets its resource
+// ref to set the status of instance
+func (c *Client) ClientCreateSecret(ctx context.Context, values map[string][]byte, secretType string,
+	instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
+	desiredSecret, err := NewSecret(instance, values, secretType)
+	if err != nil {
+		// unable to set ownership of secret
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = c.Create(context.Background(), desiredSecret)
+	if err != nil {
+		// secret has been created at some point during this reconcile, retry
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = c.getSecretRefAndSetStatus(ctx, desiredSecret, instance, scheme)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	return reconcile.Result{}, nil
+}
+
+// ClientUpdateSecret updates a Secret resource, uses the client to save it to the cluster and gets its resource
+// ref to set the status of instance.
+func (c *Client) ClientUpdateSecret(ctx context.Context, targetSecret *corev1.Secret, instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
+	err := c.Update(ctx, targetSecret)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+
+	err = c.getSecretRefAndSetStatus(ctx, targetSecret, instance, scheme)
+	if err != nil {
+		return reconcile.Result{Requeue: true}, err
+	}
+	return reconcile.Result{}, nil
+}
+
+// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance.
+func (c *Client) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *corev1.Secret, instance v1alpha1.APIObject, scheme *runtime.Scheme) error {
+	// get Secret reference for status
+	stringRef, err := reference.GetReference(scheme, desiredSecret)
+	if err != nil {
+		return err
+	}
+
+	status := instance.GetStatus()
+	status.SetSecret(stringRef)
+	if err = c.Status().Update(ctx, instance); err != nil {
+		return err
+	}
+
+	return nil
 }

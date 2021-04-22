@@ -9,7 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/reference"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -132,11 +132,13 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha
 
 	targetSecret := existing.DeepCopy()
 
+	c := crd.Client{Client: r.client}
+
 	if len(existingAuth) > 0 && !regenerate {
 		// auth is set and regeneration is not forced, only update new data fields
 		updateData(data, targetSecret, regenerate)
 
-		return r.clientUpdateSecret(ctx, targetSecret, instance)
+		return c.ClientUpdateSecret(ctx, targetSecret, instance, r.scheme)
 	}
 
 	// either auth is not set or regeneration is forced, create new values
@@ -151,7 +153,7 @@ func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha
 	targetSecret.Data[secret.SecretFieldBasicAuthUsername] = []byte(username)
 	targetSecret.Data[secret.SecretFieldBasicAuthPassword] = password
 
-	return r.clientUpdateSecret(ctx, targetSecret, instance)
+	return c.ClientUpdateSecret(ctx, targetSecret, instance, r.scheme)
 }
 
 // createNewSecret creates a new basic auth secret from the provided values. The Secret's owner will be set
@@ -183,62 +185,9 @@ func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, instance *v1al
 	values[secret.SecretFieldBasicAuthUsername] = []byte(username)
 	values[secret.SecretFieldBasicAuthPassword] = password
 
-	return r.clientCreateNewSecret(ctx, values, secretType, instance)
-}
+	c := crd.Client{Client: r.client}
 
-// clientCreateNewSecret creates a new Secret resource, uses the client to save it to the cluster and gets its resource
-// ref to set the status of instance.
-func (r *ReconcileBasicAuth) clientCreateNewSecret(ctx context.Context, values map[string][]byte, secretType string,
-	instance *v1alpha1.BasicAuth) (reconcile.Result, error) {
-	desiredSecret, err := crd.NewSecret(instance, values, secretType)
-	if err != nil {
-		// unable to set ownership of secret
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	err = r.client.Create(context.Background(), desiredSecret)
-	if err != nil {
-		// secret has been created at some point during this reconcile, retry
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	err = r.getSecretRefAndSetStatus(ctx, desiredSecret, instance)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-	return reconcile.Result{}, nil
-}
-
-// clientUpdateSecret updates a Secret resource, uses the client to save it to the cluster and gets its resource
-// ref to set the status of instance.
-func (r *ReconcileBasicAuth) clientUpdateSecret(ctx context.Context, targetSecret *v1.Secret, instance *v1alpha1.BasicAuth) (reconcile.Result, error) {
-	err := r.client.Update(ctx, targetSecret)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	err = r.getSecretRefAndSetStatus(ctx, targetSecret, instance)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-	return reconcile.Result{}, nil
-}
-
-// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance.
-func (r *ReconcileBasicAuth) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.BasicAuth) error {
-	// get Secret reference for status
-	stringRef, err := reference.GetReference(r.scheme, desiredSecret)
-	if err != nil {
-		return err
-	}
-	status := instance.GetStatus()
-	status.SetSecret(stringRef)
-
-	if err = r.client.Status().Update(ctx, instance); err != nil {
-		return err
-	}
-
-	return nil
+	return c.ClientCreateSecret(ctx, values, secretType, instance, r.scheme)
 }
 
 // generateBasicAuthValues returns a newly generated password and its hash with given length and encoding.

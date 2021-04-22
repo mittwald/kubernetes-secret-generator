@@ -5,12 +5,10 @@ import (
 	"context"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -130,13 +128,6 @@ func TestControllerGenerateSSHSecret(t *testing.T) {
 	verifySSHSecretFromCR(t, in, out)
 
 	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
-	// give deletion time to be processed
-	time.Sleep(1 * time.Second)
-	out = &corev1.Secret{}
-	err := mgr.GetClient().Get(context.TODO(), client.ObjectKey{
-		Name:      in.Name,
-		Namespace: in.Namespace}, out)
-	require.True(t, errors.IsNotFound(err), "Secret was not deleted upon cr deletion")
 }
 
 func TestControllerRegenerateSSHSecret(t *testing.T) {
