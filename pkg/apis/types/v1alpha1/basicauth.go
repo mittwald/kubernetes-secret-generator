@@ -25,9 +25,29 @@ func (in *BasicAuth) GetStatus() *SecretStatus {
 	return &in.Status
 }
 
+func (in *BasicAuth) GetType() string {
+	return in.Spec.Type
+}
+
 type BasicAuthList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []BasicAuth `json:"items"`
+}
+
+func (in *BasicAuthList) GetTypeMeta() metav1.TypeMeta {
+	return in.TypeMeta
+}
+
+func (in *BasicAuthList) SetTypeMeta(meta metav1.TypeMeta) {
+	in.TypeMeta = meta
+}
+
+func (in *BasicAuthList) GetListMeta() metav1.ListMeta {
+	return in.ListMeta
+}
+
+func (in *BasicAuthList) SetListMeta(meta metav1.ListMeta) {
+	in.ListMeta = meta
 }

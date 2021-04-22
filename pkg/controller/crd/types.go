@@ -98,9 +98,9 @@ type Client struct {
 
 // ClientCreateSecret creates a new Secret resource, uses the client to save it to the cluster and gets its resource
 // ref to set the status of instance
-func (c *Client) ClientCreateSecret(ctx context.Context, values map[string][]byte, secretType string,
+func (c *Client) ClientCreateSecret(ctx context.Context, values map[string][]byte,
 	instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
-	desiredSecret, err := NewSecret(instance, values, secretType)
+	desiredSecret, err := NewSecret(instance, values, instance.GetType())
 	if err != nil {
 		// unable to set ownership of secret
 		return reconcile.Result{Requeue: true}, err

@@ -162,7 +162,6 @@ func (r *ReconcileSSHKeyPair) createNewSecret(ctx context.Context, instance *v1a
 
 	// get config values from instance
 	length := instance.Spec.Length
-	secretType := instance.Spec.Type
 	data := instance.Spec.Data
 	instancePrivateKey := []byte(instance.Spec.PrivateKey)
 
@@ -180,7 +179,7 @@ func (r *ReconcileSSHKeyPair) createNewSecret(ctx context.Context, instance *v1a
 
 	c := crd.Client{Client: r.client}
 
-	return c.ClientCreateSecret(ctx, values, secretType, instance, r.scheme)
+	return c.ClientCreateSecret(ctx, values, instance, r.scheme)
 }
 
 func restoreOrGenerateKeyPair(existingPrivateKey []byte, existingPublicKey []byte, length string, regenerate bool) (secret.SSHKeypair, error) {

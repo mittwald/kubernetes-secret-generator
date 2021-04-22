@@ -32,9 +32,29 @@ func (in *StringSecret) GetStatus() *SecretStatus {
 	return &in.Status
 }
 
+func (in *StringSecret) GetType() string {
+	return in.Spec.Type
+}
+
 type StringSecretList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 
 	Items []StringSecret `json:"items"`
+}
+
+func (in *StringSecretList) GetTypeMeta() metav1.TypeMeta {
+	return in.TypeMeta
+}
+
+func (in *StringSecretList) SetTypeMeta(meta metav1.TypeMeta) {
+	in.TypeMeta = meta
+}
+
+func (in *StringSecretList) GetListMeta() metav1.ListMeta {
+	return in.ListMeta
+}
+
+func (in *StringSecretList) SetListMeta(meta metav1.ListMeta) {
+	in.ListMeta = meta
 }

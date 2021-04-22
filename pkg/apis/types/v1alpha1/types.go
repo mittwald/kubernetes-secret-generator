@@ -22,6 +22,22 @@ func (in *SecretStatus) SetSecret(secret *v1.ObjectReference) {
 
 type APIObject interface {
 	GetStatus() *SecretStatus
+	GetType() string
 	runtime.Object
 	metav1.Object
+}
+
+type APIListObject interface {
+	SetTypeMeta(meta metav1.TypeMeta)
+	GetTypeMeta() metav1.TypeMeta
+	SetListMeta(meta metav1.ListMeta)
+	GetListMeta() metav1.ListMeta
+}
+
+func InitListDeepCopy(in APIListObject, kind APIListObject) interface{} {
+	out := kind
+	out.SetTypeMeta(in.GetTypeMeta())
+	out.SetListMeta(in.GetListMeta())
+
+	return out
 }

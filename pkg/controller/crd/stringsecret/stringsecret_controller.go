@@ -8,7 +8,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/reference"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -146,8 +145,9 @@ func (r *ReconcileStringSecret) UpdateSecret(ctx context.Context, instance *v1al
 	for key := range values {
 		targetSecret.Data[key] = values[key]
 	}
+	c := crd.Client{Client: r.client}
 
-	return r.clientUpdateSecret(ctx, targetSecret, instance)
+	return c.ClientUpdateSecret(ctx, targetSecret, instance, r.scheme)
 }
 
 // createNewSecret creates a new string secret from the provided values. The Secret's owner will be set
@@ -159,7 +159,6 @@ func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
 	data := instance.Spec.Data
-	secretType := instance.Spec.Type
 
 	values := make(map[string][]byte)
 
@@ -179,7 +178,9 @@ func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	return r.clientCreateNewSecret(ctx, values, secretType, instance)
+	c := crd.Client{Client: r.client}
+
+	return c.ClientCreateSecret(ctx, values, instance, r.scheme)
 }
 
 // setValuesForFields iterates over the given list of Fields and generates new random strings if the corresponding entry is empty or
@@ -223,62 +224,6 @@ func setValuesForFieldNames(fieldNames []string, regenerate bool, constraints Se
 			}
 			values[field] = randomString
 		}
-	}
-
-	return nil
-}
-
-// clientCreateNewSecret creates a new Secret resource, uses the client to save it to the cluster and gets its resource
-// ref to set the status of instance
-func (r *ReconcileStringSecret) clientCreateNewSecret(ctx context.Context, values map[string][]byte, secretType string,
-	instance *v1alpha1.StringSecret) (reconcile.Result, error) {
-	desiredSecret, err := crd.NewSecret(instance, values, secretType)
-	if err != nil {
-		// unable to set ownership of secret
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	err = r.client.Create(context.Background(), desiredSecret)
-	if err != nil {
-		// secret has been created at some point during this reconcile, or creation failed, retry
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	// get the Secret's object reference and update the CR's status
-	err = r.getSecretRefAndSetStatus(ctx, desiredSecret, instance)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-	return reconcile.Result{}, nil
-}
-
-// clientUpdateSecret updates a Secret resource, uses the client to save it to the cluster and gets its resource
-// ref to set the status of instance
-func (r *ReconcileStringSecret) clientUpdateSecret(ctx context.Context, targetSecret *v1.Secret, instance *v1alpha1.StringSecret) (reconcile.Result, error) {
-	err := r.client.Update(ctx, targetSecret)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	err = r.getSecretRefAndSetStatus(ctx, targetSecret, instance)
-	if err != nil {
-		return reconcile.Result{Requeue: true}, err
-	}
-	return reconcile.Result{}, nil
-}
-
-// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance
-func (r *ReconcileStringSecret) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *v1.Secret, instance *v1alpha1.StringSecret) error {
-	// get Secret reference for status
-	stringRef, err := reference.GetReference(r.scheme, desiredSecret)
-	if err != nil {
-		return err
-	}
-	status := instance.GetStatus()
-	status.SetSecret(stringRef)
-
-	if err = r.client.Status().Update(ctx, instance); err != nil {
-		return err
 	}
 
 	return nil

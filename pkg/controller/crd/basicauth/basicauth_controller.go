@@ -167,7 +167,6 @@ func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, instance *v1al
 
 	length := instance.Spec.Length
 	encoding := instance.Spec.Encoding
-	secretType := instance.Spec.Type
 	data := instance.Spec.Data
 
 	values := make(map[string][]byte)
@@ -187,7 +186,7 @@ func (r *ReconcileBasicAuth) createNewSecret(ctx context.Context, instance *v1al
 
 	c := crd.Client{Client: r.client}
 
-	return c.ClientCreateSecret(ctx, values, secretType, instance, r.scheme)
+	return c.ClientCreateSecret(ctx, values, instance, r.scheme)
 }
 
 // generateBasicAuthValues returns a newly generated password and its hash with given length and encoding.
