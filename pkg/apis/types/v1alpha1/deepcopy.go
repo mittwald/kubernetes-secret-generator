@@ -33,7 +33,9 @@ func (in *StringSecret) DeepCopyObject() runtime.Object {
 
 // DeepCopyObject returns a generically typed copy of an object
 func (in *StringSecretList) DeepCopyObject() runtime.Object {
-	out := InitListDeepCopy(in, &StringSecretList{}).(StringSecretList)
+	out := StringSecretList{}
+	out.TypeMeta = in.TypeMeta
+	out.ListMeta = in.ListMeta
 
 	if in.Items != nil {
 		out.Items = make([]StringSecret, len(in.Items))
@@ -73,7 +75,9 @@ func (in *BasicAuth) DeepCopyObject() runtime.Object {
 
 // DeepCopyObject returns a generically typed copy of an object
 func (in *BasicAuthList) DeepCopyObject() runtime.Object {
-	out := InitListDeepCopy(in, &BasicAuthList{}).(BasicAuthList)
+	out := BasicAuthList{}
+	out.TypeMeta = in.TypeMeta
+	out.ListMeta = in.ListMeta
 
 	if in.Items != nil {
 		out.Items = make([]BasicAuth, len(in.Items))
@@ -112,7 +116,9 @@ func (in *SSHKeyPair) DeepCopyObject() runtime.Object {
 
 // DeepCopyObject returns a generically typed copy of an object
 func (in *SSHKeyPairList) DeepCopyObject() runtime.Object {
-	out := InitListDeepCopy(in, &SSHKeyPairList{}).(SSHKeyPairList)
+	out := SSHKeyPairList{}
+	out.TypeMeta = in.TypeMeta
+	out.ListMeta = in.ListMeta
 
 	if in.Items != nil {
 		out.Items = make([]SSHKeyPair, len(in.Items))
