@@ -53,3 +53,5 @@ secretLength: 40
 # Accepts a comma-separated list of namespaces: ns1,ns2
 # If set to "", all namespaces will be watched
 watchNamespace: ""
+
+useMetricsService: false
