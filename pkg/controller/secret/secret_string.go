@@ -6,11 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
-	"time"
 )
 
 type StringGenerator struct {
@@ -48,7 +49,12 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		}
 	}
 
-	length, isByteLength, err := SecretLengthFromAnnotation(SecretLength(), instance.Annotations)
+	length, err := GetLengthFromAnnotation(DefaultLength(), instance.Annotations)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	parsedLength, isByteLength, err := ParseByteLength(DefaultLength(), length)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -62,7 +68,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		}
 		generatedCount++
 
-		err := pg.generateRandomSecret(secretConfig{instance, key, length, isByteLength})
+		err = pg.generateRandomSecret(secretConfig{instance, key, parsedLength, isByteLength})
 		if err != nil {
 			pg.log.Error(err, "could not generate new random string")
 			return reconcile.Result{RequeueAfter: time.Second * 30}, err
@@ -84,7 +90,7 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
 	length := conf.length
 	isByteLength := conf.isByteLength
 
-	encoding, err := secretEncodingFromAnnotation(secretEncoding(), instance.Annotations)
+	encoding, err := getEncodingFromAnnotation(defaultEncoding(), instance.Annotations)
 	if err != nil {
 		return err
 	}
@@ -99,6 +105,8 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
 	return nil
 }
 
+// GenerateRandomString generates a random string of given length and with given encoding.
+// If lenBytes is true, resultring string will not be trimmed
 func GenerateRandomString(length int, encoding string, lenBytes bool) ([]byte, error) {
 	b := make([]byte, length)
 	_, err := rand.Read(b)
@@ -122,9 +130,9 @@ func GenerateRandomString(length int, encoding string, lenBytes bool) ([]byte, e
 	// if length was specified with B suffix, don't trim result string
 	if lenBytes {
 		return []byte(encodedString), nil
-	} else {
-		return []byte(encodedString[0:length]), nil
 	}
+
+	return []byte(encodedString[0:length]), nil
 }
 
 // ensure elements in input array are unique

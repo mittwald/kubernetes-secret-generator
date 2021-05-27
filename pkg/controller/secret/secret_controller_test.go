@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/secretgenerator/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// add custom resources to scheme
-	err = v1alpha1.AddToScheme(scheme.Scheme)
+	err = apis.AddToScheme(scheme.Scheme)
 	if err != nil {
 		panic(err)
 	}

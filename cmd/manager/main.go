@@ -20,7 +20,6 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/apis"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller"
 	"github.com/mittwald/kubernetes-secret-generator/version"
 
@@ -146,7 +145,7 @@ func main() {
 	}
 
 	// add custom resources to scheme
-	err = v1alpha1.AddToScheme(scheme.Scheme)
+	err = apis.AddToScheme(scheme.Scheme)
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
@@ -176,7 +175,6 @@ func main() {
 
 	log.Info("Registering Components.")
 
-	// Setup Scheme for all resources
 	if err = apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)

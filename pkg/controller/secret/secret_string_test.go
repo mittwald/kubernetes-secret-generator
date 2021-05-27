@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/imdario/mergo"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"strings"
-	"testing"
-	"time"
 
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
@@ -50,7 +51,7 @@ func newStringTestSecret(fields string, extraAnnotations map[string]string, init
 
 // verify basic fields of the secret are present
 func verifyStringSecret(t *testing.T, in, out *corev1.Secret, secure bool) {
-	if out.Annotations[secret.AnnotationSecretType] != string(secret.SecretTypeString) {
+	if out.Annotations[secret.AnnotationSecretType] != string(secret.TypeString) {
 		t.Errorf("generated secret has wrong type %s on  %s annotation", out.Annotations[secret.AnnotationSecretType], secret.AnnotationSecretType)
 	}
 
@@ -82,11 +83,13 @@ func verifyStringSecret(t *testing.T, in, out *corev1.Secret, secure bool) {
 }
 
 func desiredLength(s *corev1.Secret) int {
-	res, _, err := secret.SecretLengthFromAnnotation(secret.SecretLength(), s.Annotations)
+	length, err := secret.GetLengthFromAnnotation(secret.DefaultLength(), s.Annotations)
 	if err != nil {
-		res = secret.SecretLength()
+		return secret.DefaultLength()
 	}
-	return res
+	parsed, _, _ := secret.ParseByteLength(secret.DefaultLength(), length)
+
+	return parsed
 }
 
 // verify requested keys have been regenerated
@@ -116,7 +119,7 @@ func verifyStringRegen(t *testing.T, in, out *corev1.Secret) {
 	if len(regenKeys) != 0 {
 		for _, key := range regenKeys {
 			val := out.Data[key]
-			if len(val) == 0 || len(val) != secret.SecretLength() {
+			if len(val) == 0 || len(val) != secret.DefaultLength() {
 				// check length here again, verifyStringSecret skips this for secrets that already had the generatedAt Annotation
 				t.Errorf("regenerated field has wrong length of %d", len(val))
 			}
@@ -383,7 +386,7 @@ func TestDefaultToStringGeneration(t *testing.T) {
 
 func TestStringTypeAnnotationDetected(t *testing.T) {
 	in := newStringTestSecret("testfield", map[string]string{
-		secret.AnnotationSecretType: string(secret.SecretTypeString),
+		secret.AnnotationSecretType: string(secret.TypeString),
 	}, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
@@ -398,7 +401,7 @@ func TestStringTypeAnnotationDetected(t *testing.T) {
 
 func TestStringLengthFromAnnotation(t *testing.T) {
 	in := newStringTestSecret("testfield", map[string]string{
-		secret.AnnotationSecretType:   string(secret.SecretTypeString),
+		secret.AnnotationSecretType:   string(secret.TypeString),
 		secret.AnnotationSecretLength: "42",
 	}, "")
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/secretgenerator/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd/sshkeypair"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
@@ -78,7 +79,7 @@ func verifySSHSecretFromCR(t *testing.T, in *v1alpha1.SSHKeyPair, out *corev1.Se
 		t.Error(err, "key validation failed")
 	}
 
-	pub, err := secret.SshPublicKeyForPrivateKey(key)
+	pub, err := secret.SSHPublicKeyForPrivateKey(key)
 	if err != nil {
 		t.Error(err, "generated public key could not be parsed")
 	}
@@ -261,11 +262,13 @@ func TestControllerDoNotRegenerateSSHSecretFixMissingPublicKey(t *testing.T) {
 }
 
 func TestControllerRegeneratePublicKey(t *testing.T) {
-	keyPair, err := secret.GenerateSSHKeypair(40)
+	data := make(map[string][]byte)
+	var log logr.Logger
+	err := secret.GenerateSSHKeypairData(log, "40", true, data)
 	require.NoError(t, err)
 	testSpec := v1alpha1.SSHKeyPairSpec{
 		Length:          "40",
-		PrivateKey:      string(keyPair.PrivateKey),
+		PrivateKey:      string(data[secret.SecretFieldPrivateKey]),
 		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: true,
@@ -283,7 +286,7 @@ func TestControllerRegeneratePublicKey(t *testing.T) {
 
 	privateKey := string(out.Data[secret.SecretFieldPrivateKey])
 
-	if privateKey != string(keyPair.PrivateKey) {
+	if privateKey != string(data[secret.SecretFieldPrivateKey]) {
 		t.Errorf("Private key was regenerated")
 	}
 }

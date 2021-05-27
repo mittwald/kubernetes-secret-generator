@@ -14,8 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/types/v1alpha1"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/secretgenerator/v1alpha1"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd/basicauth"
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
@@ -62,9 +61,9 @@ func verifyBasicAuthSecretFromCR(t *testing.T, in *v1alpha1.BasicAuth, out *core
 		t.Error("generated secret not referenced in CR status")
 	}
 
-	auth := out.Data[secret.SecretFieldBasicAuthIngress]
-	password := out.Data[secret.SecretFieldBasicAuthPassword]
-	length, _, err := crd.ParseByteLength(secret.SecretLength(), in.Spec.Length)
+	auth := out.Data[secret.FieldBasicAuthIngress]
+	password := out.Data[secret.FieldBasicAuthPassword]
+	length, _, err := secret.ParseByteLength(secret.DefaultLength(), in.Spec.Length)
 	if err != nil {
 		t.Error("Failed to determine secret length")
 	}
@@ -92,7 +91,6 @@ func TestControllerGenerateBasicAuthWithoutUsername(t *testing.T) {
 	testSpec := v1alpha1.BasicAuthSpec{
 		Encoding: "base64",
 		Length:   "40",
-		Type:     string(corev1.SecretTypeOpaque),
 		Data:     map[string]string{},
 	}
 
@@ -113,7 +111,7 @@ func TestControllerGenerateBasicAuthWithoutUsername(t *testing.T) {
 
 	verifyBasicAuthSecretFromCR(t, in, out)
 
-	require.Equal(t, "admin", string(out.Data[secret.SecretFieldBasicAuthUsername]))
+	require.Equal(t, "admin", string(out.Data[secret.FieldBasicAuthUsername]))
 	// check correct deletion of generated secret
 	require.NoError(t, mgr.GetClient().Delete(context.TODO(), in))
 }
@@ -123,7 +121,6 @@ func TestControllerGenerateBasicAuthWithUsername(t *testing.T) {
 		Encoding: "base64",
 		Length:   "40",
 		Username: testUsername,
-		Type:     string(corev1.SecretTypeOpaque),
 		Data:     map[string]string{},
 	}
 
@@ -144,7 +141,7 @@ func TestControllerGenerateBasicAuthWithUsername(t *testing.T) {
 
 	verifyBasicAuthSecretFromCR(t, in, out)
 
-	require.Equal(t, testUsername, string(out.Data[secret.SecretFieldBasicAuthUsername]))
+	require.Equal(t, testUsername, string(out.Data[secret.FieldBasicAuthUsername]))
 	// check correct deletion of generated secret
 
 }
@@ -168,7 +165,6 @@ func TestControllerGenerateBasicAuthNoRegenerate(t *testing.T) {
 		Encoding:        "base64",
 		Length:          "40",
 		Username:        testUsername,
-		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: false,
 	}
@@ -182,8 +178,8 @@ func TestControllerGenerateBasicAuthNoRegenerate(t *testing.T) {
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
-	oldPassword := string(out.Data[secret.SecretFieldBasicAuthPassword])
-	oldAuth := string(out.Data[secret.SecretFieldBasicAuthIngress])
+	oldPassword := string(out.Data[secret.FieldBasicAuthPassword])
+	oldAuth := string(out.Data[secret.FieldBasicAuthIngress])
 
 	verifyBasicAuthSecretFromCR(t, in, out)
 
@@ -196,8 +192,8 @@ func TestControllerGenerateBasicAuthNoRegenerate(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, outNew))
 
-	newPassword := string(outNew.Data[secret.SecretFieldBasicAuthPassword])
-	newAuth := string(outNew.Data[secret.SecretFieldBasicAuthIngress])
+	newPassword := string(outNew.Data[secret.FieldBasicAuthPassword])
+	newAuth := string(outNew.Data[secret.FieldBasicAuthIngress])
 
 	// ensure values before and after update are the same
 	if oldPassword != newPassword {
@@ -214,7 +210,6 @@ func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 		Encoding:        "base64",
 		Length:          "40",
 		Username:        testUsername,
-		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: true,
 	}
@@ -228,8 +223,8 @@ func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 	require.NoError(t, mgr.GetClient().Get(context.TODO(), client.ObjectKey{
 		Name:      in.Name,
 		Namespace: in.Namespace}, out))
-	oldPassword := string(out.Data[secret.SecretFieldBasicAuthPassword])
-	oldAuth := string(out.Data[secret.SecretFieldBasicAuthIngress])
+	oldPassword := string(out.Data[secret.FieldBasicAuthPassword])
+	oldAuth := string(out.Data[secret.FieldBasicAuthIngress])
 
 	verifyBasicAuthSecretFromCR(t, in, out)
 
@@ -242,8 +237,8 @@ func TestControllerGenerateBasicAuthRegenerate(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, outNew))
 
-	newPassword := string(outNew.Data[secret.SecretFieldBasicAuthPassword])
-	newAuth := string(outNew.Data[secret.SecretFieldBasicAuthIngress])
+	newPassword := string(outNew.Data[secret.FieldBasicAuthPassword])
+	newAuth := string(outNew.Data[secret.FieldBasicAuthIngress])
 
 	// ensure secret has been updated
 	if oldPassword == newPassword {
@@ -279,7 +274,6 @@ func TestControllerDoNotTouchOtherSecrets(t *testing.T) {
 		Encoding:        "base64",
 		Length:          "40",
 		Username:        "Hans",
-		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: false,
 	}
