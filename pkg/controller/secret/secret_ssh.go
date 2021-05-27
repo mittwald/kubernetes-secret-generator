@@ -51,31 +51,43 @@ func GenerateSSHKeypairData(logger logr.Logger, length string, regenerate bool, 
 	privateKey := data[SecretFieldPrivateKey]
 	publicKey := data[SecretFieldPublicKey]
 
-	// check for existing values, if regeneration isn't forced
 	if len(privateKey) > 0 && !regenerate {
 		return CheckAndRegenPublicKey(data, publicKey, privateKey)
 	}
+
+	key, err := generateNewPrivateKey(length, logger)
+	if err != nil {
+		return err
+	}
+
+	return generateKeysHelper(key, data)
+}
+
+// generateNewPrivateKey parses the given length and generates a matching private key
+func generateNewPrivateKey(length string, logger logr.Logger) (*rsa.PrivateKey, error) {
+	// check for existing values, if regeneration isn't forced
 
 	parsedLen, _, err := ParseByteLength(DefaultLength(), length)
 	if err != nil {
 		logger.Error(err, "could not parse length for new random string")
 
-		return err
+		return nil, err
 	}
-	key, err := rsa.GenerateKey(rand.Reader, parsedLen)
-	if err != nil {
-		return err
-	}
+	return rsa.GenerateKey(rand.Reader, parsedLen)
+}
 
+// generateKeysHelper generates the public key from the given private key and stores the result in data
+func generateKeysHelper(key *rsa.PrivateKey, data map[string][]byte) error {
 	privateKeyBytes := &bytes.Buffer{}
-	err = pem.Encode(
+	err := pem.Encode(
 		privateKeyBytes,
 		&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 	if err != nil {
 		return err
 	}
 
-	publicKeyBytes, err := SSHPublicKeyForPrivateKey(key)
+	var publicKeyBytes []byte
+	publicKeyBytes, err = SSHPublicKeyForPrivateKey(key)
 	if err != nil {
 		return err
 	}

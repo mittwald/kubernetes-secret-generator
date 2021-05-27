@@ -91,16 +91,6 @@ func verifyStringSecretFromCR(t *testing.T, in *v1alpha1.StringSecret, out *core
 	}
 }
 
-// getLengthFromFields retrieves the length value for the given field-name from fields, if the key exists, otherwise it returns an empty string
-func getLengthFromFields(fieldName string, fields []v1alpha1.Field) string {
-	for _, field := range fields {
-		if field.FieldName == fieldName {
-			return field.Length
-		}
-	}
-	return ""
-}
-
 func doReconcileStringSecretController(t *testing.T, stringSecret *v1alpha1.StringSecret, isErr bool) {
 	rec := stringsecret.NewReconciler(mgr)
 	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: stringSecret.Name, Namespace: stringSecret.Namespace}}
