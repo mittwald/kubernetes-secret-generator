@@ -61,3 +61,14 @@ Create the name of the service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Define the namespace to watch
+*/}}
+{{- define "kubernetes-secret-generator.watchNamespace" -}}
+{{- if and .Values.serviceAccount.create .Values.rbac.create (not .Values.rbac.clusterRole) -}}
+    {{ default .Values.watchNamespace .Release.Namespace }}
+{{- else -}}
+    {{ .Values.watchNamespace }}
+{{- end -}}
+{{- end -}}
