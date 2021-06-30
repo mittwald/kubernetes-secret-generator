@@ -44,7 +44,7 @@ rules:
       - "get"
       - "create"
   {{- if and .Values.rbac.create (not .Values.rbac.clusterRole) }}
-  - # Permissions to access secrets in this namespace if no cluster role is created.
+  # Permissions to access secrets in this namespace if no cluster role is created.
   - apiGroups:
       - ""
     resources:
@@ -87,7 +87,7 @@ rules:
       - "get"
       - "create"
   {{- if and .Values.rbac.create (not .Values.rbac.clusterRole) }}
-  - # Permissions to access secrets in this namespace if no cluster role is created.
+  # Permissions to access secrets in this namespace if no cluster role is created.
   - apiGroups:
       - ""
     resources:
