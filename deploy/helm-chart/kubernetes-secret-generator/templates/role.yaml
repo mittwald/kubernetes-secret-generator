@@ -43,7 +43,19 @@ rules:
     verbs:
       - "get"
       - "create"
-{{ else }}
+  {{- if and .Values.rbac.create (not .Values.rbac.clusterRole) }}
+  - # Permissions to access secrets in this namespace if no cluster role is created.
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+  {{- end -}}
+{{- else -}}
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -74,5 +86,17 @@ rules:
     verbs:
       - "get"
       - "create"
-{{ end }}
+  {{- if and .Values.rbac.create (not .Values.rbac.clusterRole) }}
+  - # Permissions to access secrets in this namespace if no cluster role is created.
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+  {{- end -}}
+{{- end -}}
 {{- end -}}
