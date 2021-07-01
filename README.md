@@ -196,26 +196,20 @@ All crs support the field `spec.type` which can be used to define the kubernetes
 ### Secure Random Strings via StringSecret-CR
 
 A `StringSecret` resource can be used to generate secure random strings similar to the ones offered by the annotation approach.
-Desired Fields to be randomly generated can be supplied via the `spec.fieldNames` property, which supports a list of strings.
-Secret length and encoding can be specified using the `spec.length` and `spec.encoding` properties and have the same options as annotation based generation.
-Alternatively, the `spec.fields` property can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same secret object. This may be desirable if the generated values are related and splitting them into separate secrets would be less intuitive. It is possible to use both options at the same time, i.e. some values can be specified using `spec.fieldNames`, while others are specified using `spec.fields`. Values defined in `spec.fields` have priority if the same field name is specified in both `spec.fields` and `spec.fieldnames`.
+Desired Fields to be randomly generated can be supplied via the `spec.fields` property, which can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same secret object. 
 The `spec.data` property can be used to specify arbitrary data entries the generated secret's `data` property should be populated with.
 Finally, the `spec.forceRegenerate` property can be used to control regeneration of secret fields.
 
 Example:
 
 ```yaml
-apiVersion: "mittwald.systems/v1alpha1"
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
 kind: "StringSecret"
 metadata:
   name: "example-pw"
   namespace: "default"
 spec:
   forceRegenerate: false
-  length: "40"
-  encoding: "base64"
-  fieldNames: 
-  - "password"
   data:
     username: "testuser"
   fields:
@@ -225,7 +219,7 @@ spec:
 ```
 
 Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications. If successful, the new resource will have its owner set as the `StringSecret` used to create it, providing automated deletion/updating of the secret if the creating cr is deleted/updated. The `StringSecret` will store an object reference to the created `Secret` in its status field.
-During updating, any new fields in `spec.data`, `spec.fieldnames` and `spec.fields` will be added, while existing fields will only be overwritten/regenerated if `spec.forceRegenerate` is set to `true`.
+During updating, any new fields in `spec.data` and `spec.fields` will be added, while existing fields will only be overwritten/regenerated if `spec.forceRegenerate` is set to `true`.
 If the target `Secret` already exists and is not owned by a `StringSecret` resource, no changes will be made to ìt.
 
 ### SSH Key Pair via SSHKeyPair-CR
@@ -235,7 +229,7 @@ The field `spec.privateKey` can be used to specify a private key, which will be 
 Updating is handled similar to `StringSecret` resources, unowned `Secrets` are not modified, and existing fields are only updated if regeneration is forced. However, should the public key be missing, the operator will attempt to regenerate it.
 
 ```yaml
-apiVersion: "mittwald.systems/v1alpha1"
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
 kind: "SSHKeyPair"
 metadata:
   name: "example-ssh"
@@ -254,7 +248,7 @@ To specify a username, use `spec.username`. If no username is provided, the oper
 Updates follow the same rules as for the other crs, existing `secrets` will only be updated if owned by a `BasicAuth` resource and if `spec.forceRegenerate` is set to true. The exception to this are new `spec.data` entries, which are added even if `forceRegenerate` is false, and cases where the `auth` field in the `Secret` is empty.
 
 ```yaml
-apiVersion: "mittwald.systems/v1alpha1"
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
 kind: "BasicAuth"
 metadata:
   name: "example-auth"
