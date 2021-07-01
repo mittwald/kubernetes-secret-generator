@@ -6,7 +6,7 @@ applications run on Kubernetes.
 
 ## Security note
 
-Older versions (>= 1.0.0) of this controller used the `math/rand` package for generating secrets, which is deterministic and not cryptographically secure (see #1 for more information). If you're already running this controller and want to regenerate all potentially compromised secrets, start the controller with the `-regenerate-insecure` flag (note that you will need to manually re-create any Pods using these secrets, though). When using the `kubectl apply` command from below, the new flag will be added to your Deployment automatically.
+Older versions (<= 1.0.0) of this controller used the `math/rand` package for generating secrets, which is deterministic and not cryptographically secure (see #1 for more information). If you're already running this controller and want to regenerate all potentially compromised secrets, start the controller with the `-regenerate-insecure` flag (note that you will need to manually re-create any Pods using these secrets, though). When using the `kubectl apply` command from below, the new flag will be added to your Deployment automatically.
 
 ## Deployment
 
@@ -23,6 +23,12 @@ You might want to take a look a the [values.yaml](deploy/helm-chart/kubernetes-s
 Multiple namespaces are supported and can be set as a comma-separated list: `ns1,ns2`.
 
   If `watchNamespace` is set to the empty string value `""`, all namespaces will be watched.
+
+- `rbac.create` controls if rbac resources are deployed.
+
+- `rbac.clusterRole` controls if secrets generator has permission to watch secrets in namespaces other than where it has been deployed.
+
+  `rbac.clusterRole=false & watchNamespace=""` will result in `watchNamespace` being set to the current namespace as this is all the permissions will allow access to.
 
 Afterwards, deploy the operator using:
 
