@@ -131,5 +131,11 @@ jobs:
       - name: Push images
         run: docker push "$IMAGE_NAME:latest" && docker push "$IMAGE_NAME:${GITHUB_REF##*/}"
 
-      - name: Bump Chart Version
-        run: bash ./scripts/bump-app-version.sh publish "${GITHUB_REF##*/}" "${{ secrets.githubToken }}"
+      - name: Run chart version bump
+        uses: mittwald/bump-app-version-action@v1
+        with:
+          mode: 'publish'
+          chartYaml: './deploy/helm-chart/kubernetes-secret-generator/Chart.yaml'
+        env:
+          GITHUB_TOKEN: "${{ secrets.RELEASE_USER_TOKEN }}"
+          HELM_REPO_PASSWORD: "${{ secrets.HELM_REPO_PASSWORD }}"
