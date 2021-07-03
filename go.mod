@@ -7,6 +7,7 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/imdario/mergo v0.3.8
 	github.com/operator-framework/operator-sdk v0.16.0
+	github.com/pkg/errors v0.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.4.0

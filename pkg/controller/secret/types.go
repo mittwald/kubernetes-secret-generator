@@ -2,6 +2,10 @@ package secret
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -17,24 +21,46 @@ const (
 	AnnotationSecretEncoding        = "secret-generator.v1.mittwald.de/encoding"
 )
 
-type SecretType string
+type Type string
 
 const (
-	SecretTypeString     SecretType = "string"
-	SecretTypeSSHKeypair SecretType = "ssh-keypair"
-	SecretTypeBasicAuth  SecretType = "basic-auth"
+	TypeString     Type = "string"
+	TypeSSHKeypair Type = "ssh-keypair"
+	TypeBasicAuth  Type = "basic-auth"
 )
 
-func (st SecretType) Validate() error {
+func (st Type) Validate() error {
 	switch st {
-	case SecretTypeString,
-		SecretTypeSSHKeypair,
-		SecretTypeBasicAuth:
+	case TypeString,
+		TypeSSHKeypair,
+		TypeBasicAuth:
 		return nil
 	}
 	return fmt.Errorf("%s is not a valid secret type", st)
 }
 
-type SecretGenerator interface {
+type Generator interface {
 	generateData(*corev1.Secret) (reconcile.Result, error)
+}
+
+// ParseByteLength parses the given length string into an integer length and determines whether the byte-length-suffix was set.
+// In case paring fails, or the string is empty, the fallback will be returned, along with false.
+func ParseByteLength(fallback int, length string) (int, bool, error) {
+	isByteLength := false
+
+	lengthString := strings.ToLower(length)
+	if len(lengthString) == 0 {
+		return fallback, isByteLength, nil
+	}
+
+	if strings.HasSuffix(lengthString, ByteSuffix) {
+		isByteLength = true
+	}
+	intVal, err := strconv.Atoi(strings.TrimSuffix(lengthString, ByteSuffix))
+	if err != nil {
+		return fallback, isByteLength, errors.WithStack(err)
+	}
+	secretLength := intVal
+
+	return secretLength, isByteLength, nil
 }

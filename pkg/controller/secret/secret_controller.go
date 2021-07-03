@@ -3,11 +3,14 @@ package secret
 import (
 	"context"
 	errstd "errors"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/spf13/viper"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -15,39 +18,36 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"strconv"
-	"strings"
-	"time"
 )
 
-const byteSuffix = "b"
+const ByteSuffix = "b"
 
 var log = logf.Log.WithName("controller_secret")
 
-func regenerateInsecure() bool {
+func RegenerateInsecure() bool {
 	return viper.GetBool("regenerate-insecure")
 }
 
-func secretLength() int {
+func DefaultLength() int {
 	return viper.GetInt("secret-length")
 }
 
-func secretEncoding() string {
+func defaultEncoding() string {
 	return viper.GetString("secret-encoding")
 }
 
-func sshKeyLength() int {
+func SSHKeyLength() int {
 	return viper.GetInt("ssh-key-length")
 }
 
 // Add creates a new Secret Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	return add(mgr, NewReconciler(mgr))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+// NewReconciler returns a new reconcile.Reconciler
+func NewReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileSecret{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
@@ -73,7 +73,7 @@ var _ reconcile.Reconciler = &ReconcileSecret{}
 
 // ReconcileSecret reconciles a Secret object
 type ReconcileSecret struct {
-	// This client, initialized using mgr.Client() above, is a split client
+	// This Client, initialized using mgr.Client() above, is a split Client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
@@ -104,16 +104,16 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 
 	desired := instance.DeepCopy()
 
-	sType := SecretType(desired.Annotations[AnnotationSecretType])
-	if err := sType.Validate(); err != nil {
+	sType := Type(desired.Annotations[AnnotationSecretType])
+	if err = sType.Validate(); err != nil {
 		if _, ok := desired.Annotations[AnnotationSecretAutoGenerate]; !ok && sType == "" {
 			// return if secret has no type and no autogenerate annotation
 			return reconcile.Result{}, nil
 		}
 
 		// keep backwards compatibility by defaulting to string type
-		desired.Annotations[AnnotationSecretType] = string(SecretTypeString)
-		sType = SecretTypeString
+		desired.Annotations[AnnotationSecretType] = string(TypeString)
+		sType = TypeString
 	}
 
 	reqLogger = reqLogger.WithValues("type", sType)
@@ -123,19 +123,19 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 		desired.Data = make(map[string][]byte)
 	}
 
-	var generator SecretGenerator
+	var generator Generator
 	switch sType {
-	case SecretTypeSSHKeypair:
+	case TypeSSHKeypair:
 		generator = SSHKeypairGenerator{
-			log: reqLogger.WithValues("type", SecretTypeSSHKeypair),
+			log: reqLogger.WithValues("type", TypeSSHKeypair),
 		}
-	case SecretTypeString:
+	case TypeString:
 		generator = StringGenerator{
-			log: reqLogger.WithValues("type", SecretTypeString),
+			log: reqLogger.WithValues("type", TypeString),
 		}
-	case SecretTypeBasicAuth:
+	case TypeBasicAuth:
 		generator = BasicAuthGenerator{
-			log: reqLogger.WithValues("type", SecretTypeBasicAuth),
+			log: reqLogger.WithValues("type", TypeBasicAuth),
 		}
 	default:
 		// default case to prevent potential nil-pointer
@@ -163,26 +163,16 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 	return reconcile.Result{}, nil
 }
 
-func secretLengthFromAnnotation(fallback int, annotations map[string]string) (int, bool, error) {
+func GetLengthFromAnnotation(fallback int, annotations map[string]string) (string, error) {
 	l := fallback
-	isByteLength := false
 
 	if val, ok := annotations[AnnotationSecretLength]; ok {
-		val = strings.ToLower(val)
-		if strings.HasSuffix(val, byteSuffix) {
-			isByteLength = true
-		}
-		intVal, err := strconv.Atoi(strings.TrimSuffix(val, byteSuffix))
-
-		if err != nil {
-			return 0, false, err
-		}
-		l = intVal
+		return val, nil
 	}
-	return l, isByteLength, nil
+	return strconv.Itoa(l), nil
 }
 
-func secretEncodingFromAnnotation(fallback string, annotations map[string]string) (string, error) {
+func getEncodingFromAnnotation(fallback string, annotations map[string]string) (string, error) {
 	if val, ok := annotations[AnnotationSecretEncoding]; ok {
 		return val, nil
 	}

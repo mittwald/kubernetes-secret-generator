@@ -37,6 +37,21 @@ rules:
       - secrets
     verbs:
       - get
+      - create
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - secretgenerator.mittwald.de
+    resources:
+      - basicauths
+      - basicauths/status
+      - sshkeypairs
+      - sshkeypairs/status
+      - stringsecrets
+      - stringsecrets/status
+    verbs:
+      - get
       - list
       - watch
       - update
