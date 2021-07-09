@@ -19,6 +19,8 @@ You might want to take a look a the [values.yaml](deploy/helm-chart/kubernetes-s
 
 - `watchNamespace` defines, which namespaces should be watched for secret objects.
 
+- `useMetricsService` toggles whether the operator should provide a service for metrics monitoring by Prometheus. If this is set to true, the operator will start with additional permissions, namely `get` permissions for `replicasets` and `deployments` in the apiGroup `apps`, as well as `create` permissions for `services` and create the needed services during startup.
+
   To watch a single namespace, set it to the desired namespace name.
 Multiple namespaces are supported and can be set as a comma-separated list: `ns1,ns2`.
 
