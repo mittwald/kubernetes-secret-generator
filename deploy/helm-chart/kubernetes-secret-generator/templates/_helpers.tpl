@@ -75,7 +75,7 @@ Define the namespace to watch
 
 {{/*
 Return the proper Docker Image Registry Secret Names
-{{ include "common.images.pullSecrets" ( dict "images" (list .Values.path.to.the.image1, .Values.path.to.the.image2) "global" .Values.global) }}
+{{ include "common.images.pullSecrets" ( dict "images" (list .Values.image) "global" .Values.global) }}
 */}}
 {{- define "common.images.pullSecrets" -}}
   {{- $pullSecrets := list }}
@@ -108,4 +108,3 @@ imagePullSecrets:
         {{ .Values.repository }}:{{ .Values.tag | default .root.Chart.AppVersion }}
     {{- end }}
 {{- end -}}
-
