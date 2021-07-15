@@ -72,3 +72,39 @@ Define the namespace to watch
     {{ .Values.watchNamespace }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Return the proper Docker Image Registry Secret Names
+{{ include "kubernetes-secret-generator.images.pullSecrets" ( dict "images" (list .Values.image) "global" .Values.global) }}
+*/}}
+{{- define "kubernetes-secret-generator.images.pullSecrets" -}}
+  {{- $pullSecrets := list }}
+
+  {{- if .global }}
+    {{- range .global.imagePullSecrets -}}
+      {{- $pullSecrets = append $pullSecrets . -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- range .images -}}
+    {{- range .pullSecrets -}}
+      {{- $pullSecrets = append $pullSecrets . -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if (not (empty $pullSecrets)) }}
+imagePullSecrets:
+    {{- range $pullSecrets }}
+  - name: {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{ define "kubernetes-secret-generator.images.image" -}}
+    {{ $registry := .root.Values.global.imageRegistry | default .Values.registry -}}
+    {{ if $registry -}}
+        {{ $registry }}/{{ .Values.repository }}:{{ .Values.tag | default .root.Chart.AppVersion }}
+    {{- else -}}
+        {{ .Values.repository }}:{{ .Values.tag | default .root.Chart.AppVersion }}
+    {{- end }}
+{{- end -}}
