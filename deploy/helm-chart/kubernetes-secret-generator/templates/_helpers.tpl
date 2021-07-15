@@ -75,9 +75,9 @@ Define the namespace to watch
 
 {{/*
 Return the proper Docker Image Registry Secret Names
-{{ include "common.images.pullSecrets" ( dict "images" (list .Values.image) "global" .Values.global) }}
+{{ include "kubernetes-secret-generator.images.pullSecrets" ( dict "images" (list .Values.image) "global" .Values.global) }}
 */}}
-{{- define "common.images.pullSecrets" -}}
+{{- define "kubernetes-secret-generator.images.pullSecrets" -}}
   {{- $pullSecrets := list }}
 
   {{- if .global }}
@@ -100,7 +100,7 @@ imagePullSecrets:
   {{- end }}
 {{- end -}}
 
-{{ define "common.image" -}}
+{{ define "kubernetes-secret-generator.images.image" -}}
     {{ $registry := .root.Values.global.imageRegistry | default .Values.registry -}}
     {{ if $registry -}}
         {{ $registry }}/{{ .Values.repository }}:{{ .Values.tag | default .root.Chart.AppVersion }}
