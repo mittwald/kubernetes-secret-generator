@@ -4,6 +4,8 @@ metadata:
   name: kubernetes-secret-generator
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       name: kubernetes-secret-generator
