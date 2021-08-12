@@ -60,6 +60,8 @@ secretLength: 40
 # Accessing secrets in namespaces other than the deployed one requires permissions via a cluster role (on by default)
 watchNamespace: ""
 
+useMetricsService: false
+
 # RBAC parameteres
 # https://kubernetes.io/docs/reference/access-authn-authz/rbac/
 rbac:
@@ -69,3 +71,4 @@ rbac:
   # Set to false to restrict access to the deployed namespace only.
   # ClusterRole is deployed by Default
   clusterRole: true
+

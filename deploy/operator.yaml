@@ -50,3 +50,5 @@ spec:
               value: "true"
             - name: SECRET_LENGTH
               value: "40"
+            - name: USE_METRICS_SERVICE
+              value: "false"

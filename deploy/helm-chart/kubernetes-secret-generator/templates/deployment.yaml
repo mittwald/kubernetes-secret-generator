@@ -53,6 +53,8 @@ spec:
               value: {{ .Values.regenerateInsecure | quote }}
             - name: SECRET_LENGTH
               value: {{ .Values.secretLength | quote }}
+            - name: USE_METRICS_SERVICE
+              value: {{ .Values.useMetricsService | quote }}
           resources:
       {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
