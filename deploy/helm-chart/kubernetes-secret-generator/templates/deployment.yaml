@@ -9,6 +9,8 @@ spec:
   selector:
     matchLabels:
   {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: {{ .Values.deploymentStrategy }}
   template:
     metadata:
       labels:
