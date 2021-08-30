@@ -100,9 +100,8 @@ func (r *ReconcileBasicAuth) Reconcile(request reconcile.Request) (reconcile.Res
 func (r *ReconcileBasicAuth) updateSecret(ctx context.Context, instance *v1alpha1.BasicAuth, existing *v1.Secret, reqLogger logr.Logger) (reconcile.Result, error) {
 	existingOwnerRefs := existing.OwnerReferences
 
-	result := crd.IsOwnedByCorrectCR(reqLogger, existingOwnerRefs, Kind)
-	if result != nil {
-		return *result, nil
+	if correct := crd.IsOwnedByCorrectCR(reqLogger, existingOwnerRefs, Kind); !correct {
+		return reconcile.Result{}, nil
 	}
 
 	username := instance.Spec.Username

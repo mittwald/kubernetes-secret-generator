@@ -34,7 +34,7 @@ func (pg StringGenerator) generateData(instance *corev1.Secret) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	return pg.determineKeysToRegenerate(instance, genKeys)
+	return pg.regenerateKeysWhereRequired(instance, genKeys)
 }
 
 func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
@@ -109,7 +109,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (pg StringGenerator) determineKeysToRegenerate(instance *corev1.Secret, genKeys []string) (reconcile.Result, error) {
+func (pg StringGenerator) regenerateKeysWhereRequired(instance *corev1.Secret, genKeys []string) (reconcile.Result, error) {
 	var regenKeys []string
 
 	if _, ok := instance.Annotations[AnnotationSecretSecure]; !ok && RegenerateInsecure() {

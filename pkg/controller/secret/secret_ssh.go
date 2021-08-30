@@ -123,22 +123,20 @@ func SSHPublicKeyForPrivateKey(privateKey *rsa.PrivateKey) ([]byte, error) {
 // CheckAndRegenPublicKey checks if the specified public key has length > 0 and regenerates it from the given private key
 // otherwise. The result is written into data
 func CheckAndRegenPublicKey(data map[string][]byte, publicKey, privateKey []byte) error {
-	if len(publicKey) == 0 {
-		// restore public key if private key exists
-		rsaKey, err := PrivateKeyFromPEM(privateKey)
-		if err != nil {
-			return err
-		}
-
-		publicKey, err = SSHPublicKeyForPrivateKey(rsaKey)
-		if err != nil {
-			return err
-		}
-
-		data[SecretFieldPublicKey] = publicKey
-
+	if len(publicKey) > 0 {
 		return nil
 	}
+
+	// restore public key if private key exists
+	rsaKey, err := PrivateKeyFromPEM(privateKey)
+	if err != nil {
+		return err
+	}
+	publicKey, err = SSHPublicKeyForPrivateKey(rsaKey)
+	if err != nil {
+		return err
+	}
+	data[SecretFieldPublicKey] = publicKey
 
 	return nil
 }

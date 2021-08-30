@@ -98,9 +98,8 @@ func (r *ReconcileStringSecret) updateSecret(ctx context.Context, instance *v1al
 	// check if secret was created by a cr of the StringSecret kind
 	existingOwnerRefs := existing.OwnerReferences
 
-	result := crd.IsOwnedByCorrectCR(reqLogger, existingOwnerRefs, Kind)
-	if result != nil {
-		return *result, nil
+	if correct := crd.IsOwnedByCorrectCR(reqLogger, existingOwnerRefs, Kind); !correct {
+		return reconcile.Result{}, nil
 	}
 
 	fields := instance.Spec.Fields

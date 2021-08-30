@@ -99,9 +99,8 @@ func (r *ReconcileSSHKeyPair) updateSecret(ctx context.Context, existing *v1.Sec
 	// Check if Secret is owned by SSHKeyPair cr, otherwise do nothing
 	existingOwnerRefs := existing.OwnerReferences
 
-	result := crd.IsOwnedByCorrectCR(reqLogger, existingOwnerRefs, Kind)
-	if result != nil {
-		return *result, nil
+	if correct := crd.IsOwnedByCorrectCR(reqLogger, existingOwnerRefs, Kind); !correct {
+		return reconcile.Result{}, nil
 	}
 
 	// get config values from instance

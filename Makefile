@@ -64,7 +64,7 @@ kind: deletekind## Create a kind cluster to test against
 deletekind:
 	kind delete cluster --name kind-k8s-secret-generator
 
-.PHONYY: crd
+.PHONY: crd
 crd: kind
 	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
 	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
