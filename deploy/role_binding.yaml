@@ -17,6 +17,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: kubernetes-secret-generator
+    namespace: default
 roleRef:
   kind: ClusterRole
   name: kubernetes-secret-generator

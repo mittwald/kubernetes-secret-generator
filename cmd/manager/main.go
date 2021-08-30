@@ -5,13 +5,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/spf13/viper"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"os"
 	"runtime"
+	"strings"
+
+	"github.com/spf13/viper"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -143,8 +145,16 @@ func main() {
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
 	}
 
+	// add custom resources to scheme
+	err = apis.AddToScheme(scheme.Scheme)
+	if err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
 	// Create a new manager to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, options)
+	var mgr manager.Manager
+	mgr, err = manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
@@ -166,14 +176,13 @@ func main() {
 
 	log.Info("Registering Components.")
 
-	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+	if err = apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
 
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	if err = controller.AddToManager(mgr); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
@@ -186,7 +195,7 @@ func main() {
 	log.Info("Starting the Cmd.")
 
 	// Start the Cmd
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
+	if err = mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}
@@ -204,7 +213,7 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 		}
 	}
 
-	if err := serveCRMetrics(cfg, operatorNs); err != nil {
+	if err = serveCRMetrics(cfg, operatorNs); err != nil {
 		log.Info("Could not generate and serve custom resource metrics", "error", err.Error())
 	}
 
@@ -215,7 +224,8 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 	}
 
 	// Create Service object to expose the metrics port(s).
-	service, err := metrics.CreateMetricsService(ctx, cfg, servicePorts)
+	var service *v1.Service
+	service, err = metrics.CreateMetricsService(ctx, cfg, servicePorts)
 	if err != nil {
 		log.Info("Could not create metrics Service", "error", err.Error())
 	}
@@ -230,7 +240,7 @@ func addMetrics(ctx context.Context, cfg *rest.Config) {
 		log.Info("Could not create ServiceMonitor object", "error", err.Error())
 		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
 		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
-		if err == metrics.ErrServiceMonitorNotPresent {
+		if errors.Is(err, metrics.ErrServiceMonitorNotPresent) {
 			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
 		}
 	}
@@ -249,7 +259,8 @@ func serveCRMetrics(cfg *rest.Config, operatorNs string) error {
 
 	// The metrics will be generated from the namespaces which are returned here.
 	// NOTE that passing nil or an empty list of namespaces in GenerateAndServeCRMetrics will result in an error.
-	ns, err := kubemetrics.GetNamespacesForMetrics(operatorNs)
+	var ns []string
+	ns, err = kubemetrics.GetNamespacesForMetrics(operatorNs)
 	if err != nil {
 		return err
 	}

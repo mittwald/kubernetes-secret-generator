@@ -34,8 +34,8 @@ jobs:
       - name: Run golangci-lint
         run: $(go env GOPATH)/bin/golangci-lint run -v --timeout 5m
 
-      - name: Create kind cluster
-        run: make kind
+      - name: Create kind cluster and apply crds
+        run: make crd
 
       - name: Hack Code Climate and Go Modules
         if: github.event_name != 'pull_request'
@@ -53,7 +53,7 @@ jobs:
 
       - name: Go Test
         if: github.event_name == 'pull_request'
-        run: go test -coverprofile=c.out ./...
+        run: go test -coverprofile=c.out -coverpkg=./pkg/...  ./...
 
   build:
     name: Build Image

@@ -8,6 +8,10 @@ install: ## Install all resources (RBAC and Operator)
 	kubectl apply -f deploy/role.yaml -n ${NAMESPACE}
 	kubectl apply -f deploy/role_binding.yaml  -n ${NAMESPACE}
 	kubectl apply -f deploy/service_account.yaml  -n ${NAMESPACE}
+	@echo ....... Applying CRDs .......
+	kubectl apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
+	kubectl apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
+	kubectl apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
 	@echo ....... Applying Operator .......
 	kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
 
@@ -19,7 +23,6 @@ installwithmonitoring: ## Install all resources (RBAC and Operator) with monitor
 	kubectl apply -f deploy/service_account.yaml  -n ${NAMESPACE}
 	@echo ....... Applying Operator .......
 	kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
-
 
 .PHONY: uninstall
 uninstall: ## Uninstall all that all performed in the $ make install
@@ -42,9 +45,9 @@ uninstallwithmonitoring: ## Uninstall all that all performed in the $ make insta
 	kubectl delete -f deploy/operator.yaml -n ${NAMESPACE}
 
 .PHONY: test
-test: kind
+test: crd
 	@echo go test
-	go test ./... -v
+	go test ./... -v -count=1
 
 .PHONY: fmt
 fmt:
@@ -52,9 +55,20 @@ fmt:
 	go fmt $$(go list ./...)
 
 .PHONY: kind
-kind: ## Create a kind cluster to test against
+kind: deletekind## Create a kind cluster to test against
 	kind create cluster --name kind-k8s-secret-generator
 	kind get kubeconfig --name kind-k8s-secret-generator | tee ${KUBECONFIG}
+
+
+.PHONY: deletekind
+deletekind:
+	kind delete cluster --name kind-k8s-secret-generator
+
+.PHONY: crd
+crd: kind
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
 
 .PHONY: build
 build:

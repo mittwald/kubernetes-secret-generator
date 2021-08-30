@@ -7,11 +7,12 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"time"
+
 	"github.com/go-logr/logr"
 	"golang.org/x/crypto/ssh"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 const (
@@ -23,87 +24,81 @@ type SSHKeypairGenerator struct {
 	log logr.Logger
 }
 
-type SSHKeypair struct {
-	PrivateKey []byte
-	PublicKey  []byte
-}
-
 func (sg SSHKeypairGenerator) generateData(instance *corev1.Secret) (reconcile.Result, error) {
-	privateKey := instance.Data[SecretFieldPrivateKey]
-	publicKey := instance.Data[SecretFieldPublicKey]
-
 	regenerate := instance.Annotations[AnnotationSecretRegenerate] != ""
-
-	// check for existing values, if regeneration isn't forced
-	if len(privateKey) > 0 && !regenerate {
-		if len(publicKey) == 0 {
-			// restore public key if private key exists
-			rsaKey, err := privateKeyFromPEM(privateKey)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			publicKey, err = sshPublicKeyForPrivateKey(rsaKey)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
-			instance.Data[SecretFieldPublicKey] = publicKey
-		}
-
-		// do nothing, both keys are present
-		return reconcile.Result{}, nil
-	}
 
 	if regenerate {
 		delete(instance.Annotations, AnnotationSecretRegenerate)
 	}
 
-	length, _, err := secretLengthFromAnnotation(sshKeyLength(), instance.Annotations)
+	length, err := GetLengthFromAnnotation(SSHKeyLength(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	keyPair, err := generateSSHKeypair(length)
+	err = GenerateSSHKeypairData(sg.log, length, regenerate, instance.Data)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
-
-	instance.Data[SecretFieldPublicKey] = keyPair.PublicKey
-	instance.Data[SecretFieldPrivateKey] = keyPair.PrivateKey
 
 	return reconcile.Result{}, nil
 }
 
 // generates ssh private and public key of given length
-// the returned public key is in authorized-keys format
+// and writes the result to data. The public key is in authorized-keys format,
 // the private key is PEM encoded
-func generateSSHKeypair(length int) (SSHKeypair, error) {
-	key, err := rsa.GenerateKey(rand.Reader, length)
-	if err != nil {
-		return SSHKeypair{}, err
+func GenerateSSHKeypairData(logger logr.Logger, length string, regenerate bool, data map[string][]byte) error {
+	privateKey := data[SecretFieldPrivateKey]
+	publicKey := data[SecretFieldPublicKey]
+
+	if len(privateKey) > 0 && !regenerate {
+		return CheckAndRegenPublicKey(data, publicKey, privateKey)
 	}
 
+	key, err := generateNewPrivateKey(length, logger)
+	if err != nil {
+		return err
+	}
+
+	return generateKeysHelper(key, data)
+}
+
+// generateNewPrivateKey parses the given length and generates a matching private key
+func generateNewPrivateKey(length string, logger logr.Logger) (*rsa.PrivateKey, error) {
+	// check for existing values, if regeneration isn't forced
+
+	parsedLen, _, err := ParseByteLength(DefaultLength(), length)
+	if err != nil {
+		logger.Error(err, "could not parse length for new random string")
+
+		return nil, err
+	}
+	return rsa.GenerateKey(rand.Reader, parsedLen)
+}
+
+// generateKeysHelper generates the public key from the given private key and stores the result in data
+func generateKeysHelper(key *rsa.PrivateKey, data map[string][]byte) error {
 	privateKeyBytes := &bytes.Buffer{}
-	err = pem.Encode(
+	err := pem.Encode(
 		privateKeyBytes,
 		&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 	if err != nil {
-		return SSHKeypair{}, err
+		return err
 	}
 
-	publicKey, err := sshPublicKeyForPrivateKey(key)
+	var publicKeyBytes []byte
+	publicKeyBytes, err = SSHPublicKeyForPrivateKey(key)
 	if err != nil {
-		return SSHKeypair{}, err
+		return err
 	}
 
-	return SSHKeypair{
-		PublicKey:  publicKey,
-		PrivateKey: privateKeyBytes.Bytes(),
-	}, nil
+	data[SecretFieldPublicKey] = publicKeyBytes
+	data[SecretFieldPrivateKey] = privateKeyBytes.Bytes()
+
+	return nil
 }
 
-func privateKeyFromPEM(pemKey []byte) (*rsa.PrivateKey, error) {
+func PrivateKeyFromPEM(pemKey []byte) (*rsa.PrivateKey, error) {
 	b, _ := pem.Decode(pemKey)
 	if b == nil {
 		return nil, errors.New("failed to parse private Key PEM block")
@@ -116,11 +111,32 @@ func privateKeyFromPEM(pemKey []byte) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func sshPublicKeyForPrivateKey(privateKey *rsa.PrivateKey) ([]byte, error) {
+func SSHPublicKeyForPrivateKey(privateKey *rsa.PrivateKey) ([]byte, error) {
 	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 
 	return ssh.MarshalAuthorizedKey(publicKey), nil
+}
+
+// CheckAndRegenPublicKey checks if the specified public key has length > 0 and regenerates it from the given private key
+// otherwise. The result is written into data
+func CheckAndRegenPublicKey(data map[string][]byte, publicKey, privateKey []byte) error {
+	if len(publicKey) > 0 {
+		return nil
+	}
+
+	// restore public key if private key exists
+	rsaKey, err := PrivateKeyFromPEM(privateKey)
+	if err != nil {
+		return err
+	}
+	publicKey, err = SSHPublicKeyForPrivateKey(rsaKey)
+	if err != nil {
+		return err
+	}
+	data[SecretFieldPublicKey] = publicKey
+
+	return nil
 }

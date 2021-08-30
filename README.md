@@ -69,7 +69,11 @@ $ make uninstall
 
 This operator is capable of generating secure random strings and ssh keypair secrets. 
 
-The type of secret to be generated can be specified by the `secret-generator.v1.mittwald.de/type` annotation.
+It supports two ways of secret generation, annotation-based and cr-based.
+
+### Annotation-based generation
+
+For annotation based generation, the type of secret to be generated can be specified by the `secret-generator.v1.mittwald.de/type` annotation.
 This annotation can be added to any Kubernetes secret object in the operators `watchNamespace`.
 
 The encoding of the secret can be specified by the `secret-generator.v1.mittwald.de/encoding` annotation.
@@ -79,7 +83,6 @@ that was generated. `base64` will be used, if the annotation was not used.
 The length of the generated secret can be specified by the `secret-generator.v1.mittwald.de/length` annotation.
 By default, this length refers to the length of the generated string, and not the length of the byte sequence encoded by it. 
 The suffix `B` or `b` can be used to indicate that the provided value should refer to the encoded byte sequence instead.
-
 
 ### Secure Random Strings
 
@@ -185,6 +188,80 @@ data:
   username: admin
   password: test123
   auth: "admin:PASSWORD_HASH"
+```
+
+### CR-based generation
+
+The operator supports three kinds of custom resources: `StringSecret`, `SSHKeyPair` and `BasicAuth`. These crs can be used to trigger creation, update and deletion of desired secrets.
+All crs support the field `spec.type` which can be used to define the kubernetes type of the generated `Secret`, e.g. "Opaque"
+
+### Secure Random Strings via StringSecret-CR
+
+A `StringSecret` resource can be used to generate secure random strings similar to the ones offered by the annotation approach.
+Desired Fields to be randomly generated can be supplied via the `spec.fields` property, which can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same secret object. 
+The `spec.data` property can be used to specify arbitrary data entries the generated secret's `data` property should be populated with.
+Finally, the `spec.forceRegenerate` property can be used to control regeneration of secret fields.
+
+Example:
+
+```yaml
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
+kind: "StringSecret"
+metadata:
+  name: "example-pw"
+  namespace: "default"
+spec:
+  forceRegenerate: false
+  data:
+    username: "testuser"
+  fields:
+    - fieldName: "test"
+      encoding: "hex"
+      length: "15"
+```
+
+Upon creation of the cr, the controller will attempt to create a `Secret` resource matching the specifications. If successful, the new resource will have its owner set as the `StringSecret` used to create it, providing automated deletion/updating of the secret if the creating cr is deleted/updated. The `StringSecret` will store an object reference to the created `Secret` in its status field.
+During updating, any new fields in `spec.data` and `spec.fields` will be added, while existing fields will only be overwritten/regenerated if `spec.forceRegenerate` is set to `true`.
+If the target `Secret` already exists and is not owned by a `StringSecret` resource, no changes will be made to ìt.
+
+### SSH Key Pair via SSHKeyPair-CR
+
+A `SSHKeyPair` resource can be used to generate an ssh key pair. It supports `spec.length`, `spec.data` and `spec.forceRegenerate` similar to `StringSecret` resources.
+The field `spec.privateKey` can be used to specify a private key, which will be used during runtime to regenerate a matching public key.
+Updating is handled similar to `StringSecret` resources, unowned `Secrets` are not modified, and existing fields are only updated if regeneration is forced. However, should the public key be missing, the operator will attempt to regenerate it.
+
+```yaml
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
+kind: "SSHKeyPair"
+metadata:
+  name: "example-ssh"
+  namespace: "default"
+spec:
+  length: "40"
+  forceRegenerate: false
+  data:
+    example: "data"
+```
+
+### Ingress Basic Auth via BasicAuth-CR
+
+A `BasicAuth` resource can be used to generate Ingress Basic Auth credentials. Supported properties are `spec.length`, `spec.encoding`, `spec.data` and `spec.forceRegenerate`.
+To specify a username, use `spec.username`. If no username is provided, the operator will use `admin`.
+Updates follow the same rules as for the other crs, existing `secrets` will only be updated if owned by a `BasicAuth` resource and if `spec.forceRegenerate` is set to true. The exception to this are new `spec.data` entries, which are added even if `forceRegenerate` is false, and cases where the `auth` field in the `Secret` is empty.
+
+```yaml
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
+kind: "BasicAuth"
+metadata:
+  name: "example-auth"
+  namespace: "default"
+spec:
+  length: "40"
+  username: "testuser"
+  encoding: "base64"
+  foreRegenerate: false
+  data:
+    example: "data"
 ```
 
 ## Operational tasks
