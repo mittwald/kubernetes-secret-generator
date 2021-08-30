@@ -9,6 +9,7 @@ args: []
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+deploymentStrategy: "Recreate"
 
 serviceAccount:
   # Specifies whether a service account should be created
