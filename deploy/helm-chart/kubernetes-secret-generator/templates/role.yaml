@@ -1,4 +1,61 @@
 {{- if .Values.rbac.create -}}
+{{- if .Values.useMetricsService -}}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: "mittwald:{{ include "kubernetes-secret-generator.serviceAccountName" . }}"
+  labels:
+  {{ include "kubernetes-secret-generator.labels" . | nindent 4 }}
+rules:
+  # leader election
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - get
+  - apiGroups:
+      - "apps"
+    resources:
+      - deployments
+      - replicasets
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - create
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - delete
+      - get
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - servicemonitors
+    verbs:
+      - "get"
+      - "create"
+  {{- if and .Values.rbac.create (not .Values.rbac.clusterRole) }}
+  # Permissions to access secrets in this namespace if no cluster role is created.
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+  {{- end -}}
+{{- else -}}
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
@@ -41,4 +98,5 @@ rules:
       - watch
       - update
   {{- end -}}
+{{- end -}}
 {{- end -}}

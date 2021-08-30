@@ -9,6 +9,8 @@ spec:
   selector:
     matchLabels:
   {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: {{ .Values.deploymentStrategy }}
   template:
     metadata:
       labels:
@@ -35,13 +37,13 @@ spec:
             httpGet:
               path: /healthz
               port: healthcheck
-            initialDelaySeconds: 3
+            initialDelaySeconds: 6
             periodSeconds: 3
           readinessProbe:
             httpGet:
               path: /readyz
               port: healthcheck
-            initialDelaySeconds: 3
+            initialDelaySeconds: 6
             periodSeconds: 3
           env:
             - name: WATCH_NAMESPACE
@@ -56,6 +58,8 @@ spec:
               value: {{ .Values.regenerateInsecure | quote }}
             - name: SECRET_LENGTH
               value: {{ .Values.secretLength | quote }}
+            - name: USE_METRICS_SERVICE
+              value: {{ .Values.useMetricsService | quote }}
           resources:
       {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

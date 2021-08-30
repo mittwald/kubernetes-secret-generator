@@ -67,6 +67,7 @@ func main() {
 	pflag.String("secret-length", "40", "Secret length")
 	pflag.Int("ssh-key-length", 2048, "Default length of SSH Keys")
 	pflag.String("secret-encoding", "base64", "Encoding for secrets")
+	pflag.Bool("use-metrics-service", false, "Whether or not to use metrics service")
 	pflag.Parse()
 
 	// Import flags into viper and bind them to env vars
@@ -186,8 +187,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Add the Metrics Service
-	addMetrics(ctx, cfg)
+	if viper.GetBool("use-metrics-service") {
+		// Add the Metrics Service
+		addMetrics(ctx, cfg)
+	}
 
 	log.Info("Starting the Cmd.")
 
