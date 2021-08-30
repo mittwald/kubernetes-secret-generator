@@ -16,10 +16,7 @@ spec:
       labels:
     {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-      {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "kubernetes-secret-generator.images.pullSecrets" (dict "images" (list .Values.image) "global" .Values.global) | nindent 6 }}
       serviceAccountName: {{ include "kubernetes-secret-generator.serviceAccountName" . }}
       securityContext:
       {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -27,7 +24,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
           {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "kubernetes-secret-generator.images.image" (dict "root" . "Values" .Values.image)}}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: {{ toYaml .Values.args | nindent 12 }}
           ports:
