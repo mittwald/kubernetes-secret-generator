@@ -37,13 +37,13 @@ spec:
             httpGet:
               path: /healthz
               port: healthcheck
-            initialDelaySeconds: 3
+            initialDelaySeconds: 6
             periodSeconds: 3
           readinessProbe:
             httpGet:
               path: /readyz
               port: healthcheck
-            initialDelaySeconds: 3
+            initialDelaySeconds: 6
             periodSeconds: 3
           env:
             - name: WATCH_NAMESPACE
