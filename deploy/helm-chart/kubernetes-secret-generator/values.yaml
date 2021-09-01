@@ -26,6 +26,8 @@ serviceAccount:
 podSecurityContext: {}
   # fsGroup: 2000
 
+priorityClassName: ""
+
 securityContext: {}
   # capabilities:
   #   drop:
