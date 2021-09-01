@@ -16,6 +16,9 @@ spec:
       labels:
     {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote}}
+      {{- end }}
       {{- include "kubernetes-secret-generator.images.pullSecrets" (dict "images" (list .Values.image) "global" .Values.global) | nindent 6 }}
       serviceAccountName: {{ include "kubernetes-secret-generator.serviceAccountName" . }}
       securityContext:
