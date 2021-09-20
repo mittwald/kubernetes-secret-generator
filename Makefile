@@ -9,9 +9,9 @@ install: ## Install all resources (RBAC and Operator)
 	kubectl apply -f deploy/role_binding.yaml  -n ${NAMESPACE}
 	kubectl apply -f deploy/service_account.yaml  -n ${NAMESPACE}
 	@echo ....... Applying CRDs .......
-	kubectl apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
-	kubectl apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
-	kubectl apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
+	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
+	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
+	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
 	@echo ....... Applying Operator .......
 	kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
 
@@ -66,9 +66,9 @@ deletekind:
 
 .PHONY: crd
 crd: kind
-	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
-	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
-	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/helm-chart/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
 
 .PHONY: build
 build:
