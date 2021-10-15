@@ -1,4 +1,4 @@
-SHELL=/bin/bash
+SHELL := /usr/bin/env bash
 NAMESPACE=default
 KUBECONFIG=/tmp/kubeconfig
 
@@ -47,7 +47,7 @@ uninstallwithmonitoring: ## Uninstall all that all performed in the $ make insta
 .PHONY: test
 test: crd
 	@echo go test
-	go test ./... -v -count=1
+	env KUBECONFIG=${KUBECONFIG} go test ./... -v  -count=1
 
 .PHONY: fmt
 fmt:
@@ -73,4 +73,9 @@ crd: kind
 .PHONY: build
 build:
 	operator-sdk build --go-build-args "-ldflags -X=version.Version=${SECRET_OPERATOR_VERSION}" ${DOCKER_IMAGE}
+	@exit $(.SHELLSTATUS)
+
+.PHONY: build-binary
+build-binary:
+	go build -v -ldflags -X=version.Version=${SECRET_OPERATOR_VERSION} ./cmd/...
 	@exit $(.SHELLSTATUS)
