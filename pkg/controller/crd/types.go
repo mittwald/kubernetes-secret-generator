@@ -80,14 +80,21 @@ func (c *Client) ClientCreateSecret(ctx context.Context, values map[string][]byt
 		// unable to set ownership of secret
 		return reconcile.Result{}, err
 	}
+	return c.ClientStoreSecret(ctx, desiredSecret, instance, scheme)
+}
 
-	err = c.Create(ctx, desiredSecret)
+// ClientCreateSecret stores a newly created Secret resource, uses the client to save it to the cluster and gets its resource
+// ref to set the status of instance
+func (c *Client) ClientStoreSecret(ctx context.Context, secret *corev1.Secret,
+	instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
+
+	err := c.Create(ctx, secret)
 	if err != nil {
 		// secret has been created at some point during this reconcile, retry
 		return reconcile.Result{}, err
 	}
 
-	err = c.getSecretRefAndSetStatus(ctx, desiredSecret, instance, scheme)
+	err = c.getSecretRefAndSetStatus(ctx, secret, instance, scheme)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

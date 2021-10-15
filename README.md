@@ -224,6 +224,36 @@ Upon creation of the cr, the controller will attempt to create a `Secret` resour
 During updating, any new fields in `spec.data` and `spec.fields` will be added, while existing fields will only be overwritten/regenerated if `spec.forceRegenerate` is set to `true`.
 If the target `Secret` already exists and is not owned by a `StringSecret` resource, no changes will be made to ìt.
 
+#### Formatting values
+
+Some helm charts or deployments require a specially formatted secret values like
+a URI. It is possible to utilize the go template engine to format generated secrets
+according to a provided [template](https://pkg.go.dev/text/template).
+
+```yaml
+apiVersion: "secretgenerator.mittwald.de/v1alpha1"
+kind: "StringSecret"
+metadata:
+  name: "example-pw"
+  namespace: "default"
+spec:
+  forceRegenerate: false
+  data:
+    username: "testuser"
+  fields:
+    - fieldName: "test"
+      encoding: "hex"
+      length: "15"
+  templates:
+    - fieldName: "url"
+      template: http://test:{{.data.password | base64decode | urlquery}}@localhost/
+```
+
+This will create the `Secret` data field `url` to be set to a http url containting the password.
+Please keep in mind that a password in url form, needs to be urlquery encoded like in this example.
+The object passed to the template engine is the Secret.
+Templates are generated after the fields and in order, it is therefore possible to reference all values from the `Secret` created so far.
+
 ### SSH Key Pair via SSHKeyPair-CR
 
 A `SSHKeyPair` resource can be used to generate an ssh key pair. It supports `spec.length`, `spec.data` and `spec.forceRegenerate` similar to `StringSecret` resources.
