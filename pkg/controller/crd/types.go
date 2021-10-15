@@ -75,43 +75,44 @@ type Client struct {
 // ref to set the status of instance
 func (c *Client) ClientCreateSecret(ctx context.Context, values map[string][]byte,
 	instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
-	desiredSecret, err := NewSecret(instance, values, instance.GetType())
+	secret, err := NewSecret(instance, values, instance.GetType())
 	if err != nil {
 		// unable to set ownership of secret
 		return reconcile.Result{}, err
 	}
-	return c.ClientStoreSecret(ctx, desiredSecret, instance, scheme)
+	return c.getSecretRefAndSetStatus(ctx, true, secret, instance, scheme)
 }
 
 // ClientCreateSecret stores a newly created Secret resource, uses the client to save it to the cluster and gets its resource
 // ref to set the status of instance
 func (c *Client) ClientStoreSecret(ctx context.Context, secret *corev1.Secret,
 	instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
-	err := c.Create(ctx, secret)
 
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	return c.getSecretRefAndSetStatus(ctx, secret, instance, scheme)
+	return c.getSecretRefAndSetStatus(ctx, true, secret, instance, scheme)
 }
 
 // ClientUpdateSecret updates a Secret resource, uses the client to save it to the cluster and gets its resource
 // ref to set the status of instance.
-func (c *Client) ClientUpdateSecret(ctx context.Context, targetSecret *corev1.Secret, instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
-	err := c.Update(ctx, targetSecret)
+func (c *Client) ClientUpdateSecret(ctx context.Context, secret *corev1.Secret, instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
+	return c.getSecretRefAndSetStatus(ctx, false, secret, instance, scheme)
+}
+
+// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance.
+func (c *Client) getSecretRefAndSetStatus(ctx context.Context, create bool, secret *corev1.Secret, instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
+	// get Secret reference for status
+	var err error
+
+	if create {
+		err = c.Create(ctx, secret)
+	} else {
+		err = c.Update(ctx, secret)
+	}
 
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	return c.getSecretRefAndSetStatus(ctx, targetSecret, instance, scheme)
-}
-
-// getSecretRefAndSetStatus fetches the object reference for desiredSecret and writes it into the status of instance.
-func (c *Client) getSecretRefAndSetStatus(ctx context.Context, desiredSecret *corev1.Secret, instance v1alpha1.APIObject, scheme *runtime.Scheme) (reconcile.Result, error) {
-	// get Secret reference for status
-	stringRef, err := reference.GetReference(scheme, desiredSecret)
+	stringRef, err := reference.GetReference(scheme, secret)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
