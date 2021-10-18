@@ -26,3 +26,4 @@ jobs:
           It will automatically be closed after 7 more days. Remove the `stale` label to prevent this.
         stale-pr-label: 'stale'
         exempt-pr-labels: 'awaiting-approval,work-in-progress'
+        days-before-pr-close: -1
