@@ -37,6 +37,8 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+podAnnotations: {}
+
 resources: {}
   # limits:
   #   cpu: 100m
