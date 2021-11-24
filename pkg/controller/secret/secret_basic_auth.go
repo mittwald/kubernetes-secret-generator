@@ -41,7 +41,7 @@ func (bg BasicAuthGenerator) generateData(instance *corev1.Secret) (reconcile.Re
 	}
 
 	var encoding string
-	encoding, err = getEncodingFromAnnotation(defaultEncoding(), instance.Annotations)
+	encoding, err = getEncodingFromAnnotation(DefaultEncoding(), instance.Annotations)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
