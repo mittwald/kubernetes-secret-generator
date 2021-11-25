@@ -43,7 +43,7 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
 	length := conf.length
 	isByteLength := conf.isByteLength
 
-	encoding, err := getEncodingFromAnnotation(defaultEncoding(), instance.Annotations)
+	encoding, err := getEncodingFromAnnotation(DefaultEncoding(), instance.Annotations)
 	if err != nil {
 		return err
 	}

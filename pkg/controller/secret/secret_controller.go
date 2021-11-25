@@ -32,7 +32,7 @@ func DefaultLength() int {
 	return viper.GetInt("secret-length")
 }
 
-func defaultEncoding() string {
+func DefaultEncoding() string {
 	return viper.GetString("secret-encoding")
 }
 

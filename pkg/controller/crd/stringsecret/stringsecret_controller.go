@@ -157,7 +157,11 @@ func setValuesForFields(fields []v1alpha1.Field, regenerate bool, values map[str
 				reqLogger.Error(err, "could not parse length from map for new random string")
 				return err
 			}
-			randomString, randErr := secret.GenerateRandomString(fieldLength, field.Encoding, isByteLength)
+			encoding := field.Encoding
+			if encoding == "" {
+				encoding = secret.DefaultEncoding()
+			}
+			randomString, randErr := secret.GenerateRandomString(fieldLength, encoding, isByteLength)
 			if randErr != nil {
 				reqLogger.Error(err, "could not generate new random string")
 				return err
