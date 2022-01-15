@@ -259,7 +259,7 @@ spec:
   length: "40"
   username: "testuser"
   encoding: "base64"
-  foreRegenerate: false
+  forceRegenerate: false
   data:
     example: "data"
 ```
