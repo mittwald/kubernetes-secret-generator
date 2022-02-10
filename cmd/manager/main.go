@@ -68,6 +68,8 @@ func main() {
 	pflag.Int("ssh-key-length", 2048, "Default length of SSH Keys")
 	pflag.String("secret-encoding", "base64", "Encoding for secrets")
 	pflag.Bool("use-metrics-service", false, "Whether or not to use metrics service")
+	pflag.Bool("disable-crd-support", false, "Whether to disable CRD support and registering")
+
 	pflag.Parse()
 
 	// Import flags into viper and bind them to env vars
@@ -182,7 +184,7 @@ func main() {
 	}
 
 	// Setup all Controllers
-	if err = controller.AddToManager(mgr); err != nil {
+	if err = controller.AddToManager(mgr, !viper.GetBool("disable-crd-support")); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
