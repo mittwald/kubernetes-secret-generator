@@ -29,7 +29,12 @@ spec:
           {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ include "kubernetes-secret-generator.images.image" (dict "root" . "Values" .Values.image)}}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: {{ toYaml .Values.args | nindent 12 }}
+          args:
+            {{- $args := .Values.args }}
+            {{- if not .Values.installCRDs }}
+              {{- $args = append $args "--disable-crd-support" }}
+            {{- end }}
+            {{- toYaml $args | nindent 12 }}
           ports:
             - containerPort: 8080
               name: healthcheck
