@@ -4,14 +4,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
+type managerFunc struct {
+	isCRD       bool
+	managerFunc func(manager.Manager) error
+}
+
 // AddToManagerFuncs is a list of functions to add all Controllers to the Manager
-var AddToManagerFuncs []func(manager.Manager) error
+var AddToManagerFuncs []managerFunc
 
 // AddToManager adds all Controllers to the Manager
-func AddToManager(m manager.Manager) error {
-	for _, f := range AddToManagerFuncs {
-		if err := f(m); err != nil {
-			return err
+func AddToManager(m manager.Manager, enableCRDs bool) error {
+	for _, mf := range AddToManagerFuncs {
+		if enableCRDs || !mf.isCRD {
+			if err := mf.managerFunc(m); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
