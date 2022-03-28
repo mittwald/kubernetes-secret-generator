@@ -51,6 +51,7 @@ rules:
       - secrets
     verbs:
       - get
+      - create
       - list
       - watch
       - update
@@ -94,6 +95,7 @@ rules:
       - secrets
     verbs:
       - get
+      - create
       - list
       - watch
       - update
