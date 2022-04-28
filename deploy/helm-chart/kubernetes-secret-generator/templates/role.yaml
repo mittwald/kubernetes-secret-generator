@@ -51,6 +51,22 @@ rules:
       - secrets
     verbs:
       - get
+      - create
+      - list
+      - watch
+      - update
+  # Permissions to access CRDs in this namespace if no cluster role is created.
+  - apiGroups:
+      - secretgenerator.mittwald.de
+    resources:
+      - basicauths
+      - basicauths/status
+      - sshkeypairs
+      - sshkeypairs/status
+      - stringsecrets
+      - stringsecrets/status
+    verbs:
+      - get
       - list
       - watch
       - update
@@ -92,6 +108,22 @@ rules:
       - ""
     resources:
       - secrets
+    verbs:
+      - get
+      - create
+      - list
+      - watch
+      - update
+  # Permissions to access CRDs in this namespace if no cluster role is created.
+  - apiGroups:
+      - secretgenerator.mittwald.de
+    resources:
+      - basicauths
+      - basicauths/status
+      - sshkeypairs
+      - sshkeypairs/status
+      - stringsecrets
+      - stringsecrets/status
     verbs:
       - get
       - list
