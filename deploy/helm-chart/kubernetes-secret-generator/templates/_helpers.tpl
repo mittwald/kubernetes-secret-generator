@@ -109,3 +109,11 @@ imagePullSecrets:
         {{ .Values.repository }}:{{ .Values.tag | default .root.Chart.AppVersion }}
     {{- end }}
 {{- end -}}
+
+{{- define "kubernetes-secret-generator.tplvalues.render" -}}
+    {{- if typeIs "string" .value }}
+        {{- tpl .value .context }}
+    {{- else }}
+        {{- tpl (.value | toYaml) .context }}
+    {{- end }}
+{{- end -}}
