@@ -9,10 +9,10 @@ image:
   # if no tag is given, the chart's appVersion is used
   # tag: latest
   pullPolicy: Always
+  pullSecrets: []
 
 args: []
 
-imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 deploymentStrategy: "Recreate"
