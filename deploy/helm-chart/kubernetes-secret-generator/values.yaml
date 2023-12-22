@@ -17,7 +17,10 @@ nameOverride: ""
 fullnameOverride: ""
 deploymentStrategy: "Recreate"
 
+automountServiceAccountToken:
+
 serviceAccount:
+  automountServiceAccountToken:
   # Specifies whether a service account should be created
   create: true
   # The name of the service account to use.
@@ -65,6 +68,10 @@ secretLength: 40
 watchNamespace: ""
 
 useMetricsService: false
+
+volumeMounts: []
+
+volumes: []
 
 # RBAC parameteres
 # https://kubernetes.io/docs/reference/access-authn-authz/rbac/

@@ -16,6 +16,9 @@ spec:
       labels:
     {{- include "kubernetes-secret-generator.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if hasKey .Values "automountServiceAccountToken" }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- end }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName | quote}}
       {{- end }}
@@ -67,6 +70,7 @@ spec:
               value: {{ .Values.useMetricsService | quote }}
           resources:
       {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts: {{ .Values.volumeMounts | toYaml | nindent 12 }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
       {{- toYaml . | nindent 8 }}
@@ -79,3 +83,4 @@ spec:
       tolerations:
   {{- toYaml . | nindent 8 }}
   {{- end }}
+      volumes: {{ .Values.volumes | toYaml | nindent 8 }}
