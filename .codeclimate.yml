@@ -1,0 +1,10 @@
+version: "2"         # required to adjust maintainability checks
+
+checks:
+  argument-count:
+    enabled: true
+    config:
+      threshold: 5
+
+exclude_patterns:
+- "**/vendor/"

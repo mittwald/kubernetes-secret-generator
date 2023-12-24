@@ -1,6 +1,7 @@
 package stringsecret
 
 import (
+	"bytes"
 	"context"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/cli-runtime/pkg/printers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -103,6 +105,7 @@ func (r *ReconcileStringSecret) updateSecret(ctx context.Context, instance *v1al
 	}
 
 	fields := instance.Spec.Fields
+	templates := instance.Spec.Templates
 	regenerate := instance.Spec.ForceRegenerate
 	data := instance.Spec.Data
 
@@ -113,6 +116,11 @@ func (r *ReconcileStringSecret) updateSecret(ctx context.Context, instance *v1al
 
 	// Generate values from fields property
 	err := setValuesForFields(fields, regenerate, targetSecret.Data)
+	if err != nil {
+		return reconcile.Result{RequeueAfter: time.Second * 30}, err
+	}
+	// Generate values from templates property
+	err = setValuesForTemplates(templates, targetSecret)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
@@ -128,6 +136,7 @@ func (r *ReconcileStringSecret) updateSecret(ctx context.Context, instance *v1al
 func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v1alpha1.StringSecret) (reconcile.Result, error) {
 	fields := instance.Spec.Fields
 	data := instance.Spec.Data
+	templates := instance.Spec.Templates
 
 	values := make(map[string][]byte)
 
@@ -142,8 +151,21 @@ func (r *ReconcileStringSecret) createNewSecret(ctx context.Context, instance *v
 	}
 
 	c := crd.Client{Client: r.client}
+	// res, error := c.ClientCreateSecret(ctx, values, instance, r.scheme)
 
-	return c.ClientCreateSecret(ctx, values, instance, r.scheme)
+	newSecret, err := crd.NewSecret(instance, values, instance.GetType())
+	if err != nil {
+		// unable to set ownership of secret
+		return reconcile.Result{}, err
+	}
+
+	err = setValuesForTemplates(templates, newSecret)
+	if err != nil {
+		// unable to update templates
+		return reconcile.Result{}, err
+	}
+
+	return c.ClientStoreSecret(ctx, newSecret, instance, r.scheme)
 }
 
 // setValuesForFields iterates over the given list of Fields and generates new random strings if the corresponding entry is empty or
@@ -170,5 +192,27 @@ func setValuesForFields(fields []v1alpha1.Field, regenerate bool, values map[str
 		}
 	}
 
+	return nil
+}
+
+// setValuesForTemplates iterates over the given list of Templates and generates the new values
+func setValuesForTemplates(templates []v1alpha1.Template, secret *v1.Secret) error {
+	for _, template := range templates {
+		tmplBytes := []byte(template.Template)
+		tmpl, err := printers.NewGoTemplatePrinter(tmplBytes)
+		if err != nil {
+			reqLogger.Error(err, "could not parse template in secret")
+			return err
+		}
+
+		tmpl.AllowMissingKeys(true)
+		out := bytes.NewBuffer([]byte{})
+		err = tmpl.PrintObj(secret, out)
+		if err != nil {
+			reqLogger.Error(err, "error evaluating template")
+			return err
+		}
+		secret.Data[template.FieldName] = out.Bytes()
+	}
 	return nil
 }

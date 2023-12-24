@@ -15,14 +15,20 @@ type StringSecretSpec struct {
 	// +optional
 	Data map[string]string `json:"data,omitempty"`
 	// +optional
-	ForceRegenerate bool    `json:"forceRegenerate,omitempty"`
-	Fields          []Field `json:"fields"`
+	ForceRegenerate bool       `json:"forceRegenerate,omitempty"`
+	Fields          []Field    `json:"fields"`
+	Templates       []Template `json:"templates"`
 }
 
 type Field struct {
 	FieldName string `json:"fieldName,omitempty"`
 	Encoding  string `json:"encoding,omitempty"`
 	Length    string `json:"length,omitempty"`
+}
+
+type Template struct {
+	FieldName string `json:"fieldName,omitempty"`
+	Template  string `json:"template,omitempty"`
 }
 
 // StringSecretStatus defines the observed state of StringSecret

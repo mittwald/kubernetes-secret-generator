@@ -84,7 +84,7 @@ func verifyStringSecretFromCR(t *testing.T, in *v1alpha1.StringSecret, out *core
 	}
 
 	// check if custom data entries were set correctly
-	for _, key := range in.Spec.Data {
+	for key, _ := range in.Spec.Data {
 		if _, ok := out.Data[key]; !ok {
 			t.Errorf("missing data entry %s", key)
 		}
@@ -336,4 +336,47 @@ func TestParseByteLength(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, fallback, length)
 	require.Equal(t, false, isByte)
+}
+
+func TestFormattingFields(t *testing.T) {
+	testSpec := v1alpha1.StringSecretSpec{
+		Type: string(corev1.SecretTypeOpaque),
+		Data: map[string]string{
+			"user": "alice",
+		},
+		Fields: []v1alpha1.Field{{
+			FieldName: "test",
+			Encoding:  "base64",
+			Length:    "40",
+		}},
+		Templates: []v1alpha1.Template{
+			{
+				FieldName: "format1",
+				Template:  "1 {{.data.user | base64decode }} 2",
+			},
+			{
+				FieldName: "format2",
+				Template:  "{{.metadata.namespace}}|static1",
+			},
+			{
+				FieldName: "format3",
+				Template:  "http://{{.data.user | base64decode | urlquery }}:{{.data.test | base64decode | urlquery}}@localhost/",
+			},
+		},
+	}
+	in := newStringSecretTestCR(testSpec, "")
+	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
+
+	doReconcileStringSecretController(t, in, false)
+
+	out := &corev1.Secret{}
+	require.NoError(t, mgr.GetClient().Get(context.TODO(), types.NamespacedName{
+		Name:      in.Name,
+		Namespace: in.Namespace}, out))
+
+	verifyStringSecretFromCR(t, in, out)
+
+	require.Equal(t, "1 alice 2", string(out.Data["format1"]))
+	require.Equal(t, "default|static1", string(out.Data["format2"]))
+	require.Regexp(t, "^http\\://alice\\:(.+)@localhost/$", string(out.Data["format3"]))
 }
