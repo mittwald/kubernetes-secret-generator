@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go
-        uses: actions/setup-go@4.0.0
+        uses: actions/setup-go@v5
         id: go
 
       - name: Check out code into the Go module directory
@@ -63,9 +63,10 @@ jobs:
           - linux/arm/v6
           - linux/arm/v7
           - linux/arm64
+    needs: ['test']
     steps:
       - name: Set up Go
-        uses: actions/setup-go@4.0.0
+        uses: actions/setup-go@v5
         id: go
 
       - name: Checkout
@@ -115,7 +116,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Set up Go
-        uses: actions/setup-go@4.0.0
+        uses: actions/setup-go@v5
         id: go
 
       - name: Checkout
@@ -173,7 +174,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Set up Go
-        uses: actions/setup-go@4.0.0
+        uses: actions/setup-go@v5
         id: go
 
       - name: Checkout
