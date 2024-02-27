@@ -4,8 +4,8 @@ global:
   imagePullSecrets:
 
 image:
-  registry: quay.io
-  repository: mittwald/kubernetes-secret-generator
+  registry: docker.io
+  repository: arush/kubernetes-secret-generator
   # if no tag is given, the chart's appVersion is used
   # tag: latest
   pullPolicy: Always
@@ -27,12 +27,14 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name:
 
-podSecurityContext: {}
+podSecurityContext:
+  {}
   # fsGroup: 2000
 
 priorityClassName: ""
 
-securityContext: {}
+securityContext:
+  {}
   # capabilities:
   #   drop:
   #   - ALL
@@ -40,7 +42,8 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
-resources: {}
+resources:
+  {}
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
@@ -82,4 +85,3 @@ rbac:
   # Set to false to restrict access to the deployed namespace only.
   # ClusterRole is deployed by Default
   clusterRole: true
-

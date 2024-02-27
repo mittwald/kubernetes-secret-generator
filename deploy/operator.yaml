@@ -16,7 +16,7 @@ spec:
       containers:
         - name: kubernetes-secret-generator
           # Replace this with the built image name
-          image: quay.io/mittwald/kubernetes-secret-generator:latest
+          image: arush/kubernetes-secret-generator:latest
           command:
             - kubernetes-secret-generator
           imagePullPolicy: Always

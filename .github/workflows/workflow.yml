@@ -11,22 +11,19 @@ on:
 
 env:
   KUBECONFIG: /tmp/kubeconfig
-  OPERATOR_SDK_VERSION: v0.18.2
-  IMAGE_NAME: quay.io/mittwald/kubernetes-secret-generator
+  IMAGE_NAME: arush/kubernetes-secret-generator
 
 jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.15
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@4.0.0
         id: go
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install golangci-lint
         run: curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(go env GOPATH)/bin v1.33.0
@@ -39,7 +36,7 @@ jobs:
 
       - name: Hack Code Climate and Go Modules
         if: github.event_name != 'pull_request'
-        run: mkdir -p github.com/mittwald && ln -sf $(pwd) github.com/mittwald/kubernetes-secret-generator
+        run: mkdir -p github.com/arush-sal && ln -sf $(pwd) github.com/arush-sal/kubernetes-secret-generator
 
       - name: Test & publish code coverage
         if: github.event_name != 'pull_request'
@@ -58,18 +55,47 @@ jobs:
   build:
     name: Build Image
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm/v6
+          - linux/arm/v7
+          - linux/arm64
     steps:
-      - name: Set up Go 1.15
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@4.0.0
         id: go
 
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install operator-sdk
-        run: sudo curl -L -o /usr/local/bin/operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu" && sudo chmod +x /usr/local/bin/operator-sdk
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set cache name
+        id: cache-name
+        run: |
+          echo 'cache-name=asterisk-cache-${{ matrix.platform }}' | sed 's:/:-:g' >> $GITHUB_OUTPUT
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Build Image
         run: operator-sdk build "$IMAGE_NAME:latest" --go-build-args "-ldflags -X=version.Version=${GITHUB_SHA::8}"
@@ -77,65 +103,147 @@ jobs:
   deploymaster:
     name: Deploy Latest Image
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm/v6
+          - linux/arm/v7
+          - linux/arm64
     needs: ['test', 'build']
     if: github.ref == 'refs/heads/master'
     steps:
-      - name: Set up Go 1.15
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@4.0.0
         id: go
 
-      - name: Registry Login
-        run: docker login -u "${{ secrets.dockerLoginUsername }}" -p "${{ secrets.dockerLoginPassword }}" quay.io
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
 
-      - name: Install operator-sdk
-        run: sudo curl -L -o /usr/local/bin/operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu" && sudo chmod +x /usr/local/bin/operator-sdk
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
-      - name: Build latest image
-        run: operator-sdk build "$IMAGE_NAME:latest" --go-build-args "-ldflags -X=version.Version=${GITHUB_SHA::8}"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Push latest tag
-        run: docker push "$IMAGE_NAME:latest"
+      - name: Set cache name
+        id: cache-name
+        run: |
+          echo 'cache-name=asterisk-cache-${{ matrix.platform }}' | sed 's:/:-:g' >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.dockerLoginUsername }}
+          password: ${{ secrets.dockerLoginPassword }}
+          registry: quay.io
+
+      - name: Build kubernetes-secret-generator
+        run: go build -o build/_output/bin/kubernetes-secret-generator -ldflags -X=version.Version=${GITHUB_SHA::8} ./cmd/manager
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
 
   deploytagged:
     name: Deploy Tagged Image
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+          - linux/arm/v6
+          - linux/arm/v7
+          - linux/arm64
     needs: ['test', 'build']
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: Set up Go 1.15
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@4.0.0
         id: go
 
-      - name: Registry Login
-        run: docker login -u "${{ secrets.dockerLoginUsername }}" -p "${{ secrets.dockerLoginPassword }}" quay.io
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-
-      - name: Install operator-sdk
-        run: sudo curl -L -o /usr/local/bin/operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu" && sudo chmod +x /usr/local/bin/operator-sdk
-
-      - name: Build tagged image
-        run: operator-sdk build "$IMAGE_NAME:latest" --go-build-args "-ldflags -X=version.Version=${GITHUB_REF##*/}"
-
-      - name: Tag versioned image
-        run: docker tag "$IMAGE_NAME:latest" "$IMAGE_NAME:${GITHUB_REF##*/}"
-
-      - name: Push images
-        run: docker push "$IMAGE_NAME:latest" && docker push "$IMAGE_NAME:${GITHUB_REF##*/}"
-
-      - name: Run chart version bump
-        uses: mittwald/bump-app-version-action@v1
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          mode: 'publish'
-          chartYaml: './deploy/helm-chart/kubernetes-secret-generator/Chart.yaml'
+          images: ${{ env.IMAGE_NAME }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set cache name
+        id: cache-name
+        run: |
+          echo 'cache-name=asterisk-cache-${{ matrix.platform }}' | sed 's:/:-:g' >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.dockerLoginUsername }}
+          password: ${{ secrets.dockerLoginPassword }}
+          registry: quay.io
+
+      - name: Build kubernetes-secret-generator
+        run: go build -o build/_output/bin/kubernetes-secret-generator -ldflags -X=version.Version=${GITHUB_REF##*/} ./cmd/manager
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
+
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+    needs: ['test', 'build']
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1.6.0
         env:
-          GITHUB_TOKEN: "${{ secrets.RELEASE_USER_TOKEN }}"
-          HELM_REPO_PASSWORD: "${{ secrets.HELM_REPO_PASSWORD }}"
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          charts_dir: "./deploy/helm-chart/kubernetes-secret-generator"
