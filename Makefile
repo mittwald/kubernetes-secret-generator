@@ -1,6 +1,9 @@
-SHELL=/bin/bash
+SHELL=/usr/bin/env bash -o pipefail
 NAMESPACE=default
 KUBECONFIG=/tmp/kubeconfig
+VERSION ?= latest
+IMAGE_TAG_BASE ?= quay.io/mittwald/kubernetes-secret-generator
+IMG ?= secret-generator:${VERSION}
 
 .PHONY: install
 install: ## Install all resources (RBAC and Operator)
@@ -8,10 +11,6 @@ install: ## Install all resources (RBAC and Operator)
 	kubectl apply -f deploy/role.yaml -n ${NAMESPACE}
 	kubectl apply -f deploy/role_binding.yaml  -n ${NAMESPACE}
 	kubectl apply -f deploy/service_account.yaml  -n ${NAMESPACE}
-	@echo ....... Applying CRDs .......
-	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
-	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
-	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
 	@echo ....... Applying Operator .......
 	kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
 
@@ -23,6 +22,7 @@ installwithmonitoring: ## Install all resources (RBAC and Operator) with monitor
 	kubectl apply -f deploy/service_account.yaml  -n ${NAMESPACE}
 	@echo ....... Applying Operator .......
 	kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
+
 
 .PHONY: uninstall
 uninstall: ## Uninstall all that all performed in the $ make install
@@ -45,9 +45,9 @@ uninstallwithmonitoring: ## Uninstall all that all performed in the $ make insta
 	kubectl delete -f deploy/operator.yaml -n ${NAMESPACE}
 
 .PHONY: test
-test: crd
+test: kind
 	@echo go test
-	go test ./... -v -count=1
+	go test ./... -v
 
 .PHONY: fmt
 fmt:
@@ -55,22 +55,22 @@ fmt:
 	go fmt $$(go list ./...)
 
 .PHONY: kind
-kind: deletekind## Create a kind cluster to test against
-	kind create cluster --name kind-k8s-secret-generator
-	kind get kubeconfig --name kind-k8s-secret-generator | tee ${KUBECONFIG}
+kind: ## Create a kind cluster to tefmt: ## Run go fmt against code.
+	go fmt ./...
 
-
-.PHONY: deletekind
-deletekind:
-	kind delete cluster --name kind-k8s-secret-generator
-
-.PHONY: crd
-crd: kind
-	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
-	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
-	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
+vet: ## Run go vet against code.
+	go vet ./...
 
 .PHONY: build
-build:
-	operator-sdk build --go-build-args "-ldflags -X=version.Version=${SECRET_OPERATOR_VERSION}" ${DOCKER_IMAGE}
+build: fmt vet ## Build manager binary.
+	go build -o bin/manager ./cmd/manager/main.go
 	@exit $(.SHELLSTATUS)
+
+.PHONY: docker-build
+docker-build: ## Build docker image with the manager.
+	docker build -t ${IMG} .
+	@exit $(.SHELLSTATUS)
+
+docker-push: ## Push docker image with the manager.
+	docker tag ${IMG} ${IMAGE_TAG_BASE}:${VERSION}
+	docker push ${IMAGE_TAG_BASE}
