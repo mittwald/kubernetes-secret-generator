@@ -45,7 +45,7 @@ uninstallwithmonitoring: ## Uninstall all that all performed in the $ make insta
 	kubectl delete -f deploy/operator.yaml -n ${NAMESPACE}
 
 .PHONY: test
-test: kind
+test: crd
 	@echo go test
 	go test ./... -v
 
