@@ -27,12 +27,14 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name:
 
-podSecurityContext: {}
+podSecurityContext:
+  {}
   # fsGroup: 2000
 
 priorityClassName: ""
 
-securityContext: {}
+securityContext:
+  {}
   # capabilities:
   #   drop:
   #   - ALL
@@ -40,7 +42,8 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
-resources: {}
+resources:
+  {}
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
@@ -83,3 +86,18 @@ rbac:
   # ClusterRole is deployed by Default
   clusterRole: true
 
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 6
+  periodSeconds: 3
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 6
+  periodSeconds: 3
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 3
