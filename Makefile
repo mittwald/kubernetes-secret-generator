@@ -1,6 +1,9 @@
-SHELL=/bin/bash
+SHELL=/usr/bin/env bash -o pipefail
 NAMESPACE=default
 KUBECONFIG=/tmp/kubeconfig
+VERSION ?= latest
+IMAGE_TAG_BASE ?= quay.io/mittwald/kubernetes-secret-generator
+IMG ?= secret-generator:${VERSION}
 
 .PHONY: install
 install: ## Install all resources (RBAC and Operator)
