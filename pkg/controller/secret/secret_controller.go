@@ -178,3 +178,17 @@ func getEncodingFromAnnotation(fallback string, annotations map[string]string) (
 	}
 	return fallback, nil
 }
+
+func GetPrivateKeyFieldFromAnnotation(fallback string, annotations map[string]string) (string, error) {
+	if val, ok := annotations[AnnotationSSHPrivateKeyField]; ok {
+		return val, nil
+	}
+	return fallback, nil
+}
+
+func GetPublicKeyFieldFromAnnotation(fallback string, annotations map[string]string) (string, error) {
+	if val, ok := annotations[AnnotationSSHPublicKeyField]; ok {
+		return val, nil
+	}
+	return fallback, nil
+}

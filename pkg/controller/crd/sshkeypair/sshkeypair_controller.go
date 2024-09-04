@@ -108,19 +108,21 @@ func (r *ReconcileSSHKeyPair) updateSecret(ctx context.Context, existing *v1.Sec
 	regenerate := instance.Spec.ForceRegenerate
 	data := instance.Spec.Data
 	instancePrivateKey := instance.Spec.PrivateKey
+	privateKeyField := instance.GetPrivateKeyField()
+	publicKeyField := instance.GetPublicKeyField()
 
-	existingPrivateKey := existing.Data[secret.SecretFieldPrivateKey]
+	existingPrivateKey := existing.Data[privateKeyField]
 
 	targetSecret := existing.DeepCopy()
 
 	// if regeneration is forced or existing private key is empty use private key from spec
 	if len(instancePrivateKey) > 0 && (len(existingPrivateKey) == 0 || regenerate) {
-		targetSecret.Data[secret.SecretFieldPrivateKey] = []byte(instancePrivateKey)
+		targetSecret.Data[privateKeyField] = []byte(instancePrivateKey)
 	}
 
 	crd.UpdateData(data, targetSecret, regenerate)
 
-	err := secret.GenerateSSHKeypairData(reqLogger, length, regenerate, targetSecret.Data)
+	err := secret.GenerateSSHKeypairData(reqLogger, length, privateKeyField, publicKeyField, regenerate, targetSecret.Data)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
@@ -140,14 +142,16 @@ func (r *ReconcileSSHKeyPair) createNewSecret(ctx context.Context, instance *v1a
 	length := instance.Spec.Length
 	data := instance.Spec.Data
 	instancePrivateKey := []byte(instance.Spec.PrivateKey)
+	privateKeyField := instance.GetPrivateKeyField()
+	publicKeyField := instance.GetPublicKeyField()
 
 	for key := range data {
 		values[key] = []byte(data[key])
 	}
 
-	values[secret.SecretFieldPrivateKey] = instancePrivateKey
+	values[privateKeyField] = instancePrivateKey
 
-	err := secret.GenerateSSHKeypairData(reqLogger, length, false, values)
+	err := secret.GenerateSSHKeypairData(reqLogger, length, privateKeyField, publicKeyField, false, values)
 	if err != nil {
 		return reconcile.Result{RequeueAfter: time.Second * 30}, err
 	}
