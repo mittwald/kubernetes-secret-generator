@@ -137,6 +137,10 @@ func (r *ReconcileSecret) Reconcile(request reconcile.Request) (reconcile.Result
 		generator = BasicAuthGenerator{
 			log: reqLogger.WithValues("type", TypeBasicAuth),
 		}
+	case TypeFernet:
+		generator = FernetGenerator{
+			log: reqLogger.WithValues("type", TypeFernet),
+		}
 	default:
 		// default case to prevent potential nil-pointer
 		reqLogger.Error(errstd.New("SecretTypeNotSpecified"), "Secret type was not specified")

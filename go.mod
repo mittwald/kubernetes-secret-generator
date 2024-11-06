@@ -3,6 +3,7 @@ module github.com/mittwald/kubernetes-secret-generator
 go 1.16
 
 require (
+	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
 	github.com/go-logr/logr v0.1.0
 	github.com/google/uuid v1.1.1
 	github.com/imdario/mergo v0.3.8
