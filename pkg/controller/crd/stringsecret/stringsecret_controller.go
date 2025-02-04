@@ -152,6 +152,16 @@ func setValuesForFields(fields []v1alpha1.Field, regenerate bool, values map[str
 	// generate only empty fields if regenerate wasn't set to true
 	for _, field := range fields {
 		if string(values[field.FieldName]) == "" || regenerate {
+			if field.Type == "fernet" {
+				fernetKey, err := secret.GenerateFernetKey()
+				if err != nil {
+					reqLogger.Error(err, "could not generate new fernet key")
+					return err
+				}
+				values[field.FieldName] = fernetKey
+
+				continue
+			}
 			fieldLength, isByteLength, err := secret.ParseByteLength(secret.DefaultLength(), field.Length)
 			if err != nil {
 				reqLogger.Error(err, "could not parse length from map for new random string")

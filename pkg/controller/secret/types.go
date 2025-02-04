@@ -27,13 +27,15 @@ const (
 	TypeString     Type = "string"
 	TypeSSHKeypair Type = "ssh-keypair"
 	TypeBasicAuth  Type = "basic-auth"
+	TypeFernet     Type = "fernet"
 )
 
 func (st Type) Validate() error {
 	switch st {
 	case TypeString,
 		TypeSSHKeypair,
-		TypeBasicAuth:
+		TypeBasicAuth,
+		TypeFernet:
 		return nil
 	}
 	return fmt.Errorf("%s is not a valid secret type", st)
