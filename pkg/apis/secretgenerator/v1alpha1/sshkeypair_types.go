@@ -15,6 +15,10 @@ type SSHKeyPairSpec struct {
 	// +optional
 	PrivateKey string `json:"privateKey,omitempty"`
 	// +optional
+	PrivateKeyField string `json:"privateKeyField,omitempty"`
+	// +optional
+	PublicKeyField string `json:"publicKeyField,omitempty"`
+	// +optional
 	Type string `json:"type,omitempty"`
 	// +optional
 	Data map[string]string `json:"data,omitempty"`
@@ -70,6 +74,20 @@ func (in *SSHKeyPairList) GetListMeta() metav1.ListMeta {
 
 func (in *SSHKeyPairList) SetListMeta(meta metav1.ListMeta) {
 	in.ListMeta = meta
+}
+
+func (in *SSHKeyPair) GetPrivateKeyField() string {
+	if in.Spec.PrivateKeyField != "" {
+		return in.Spec.PrivateKeyField
+	}
+	return "ssh-privatekey"
+}
+
+func (in *SSHKeyPair) GetPublicKeyField() string {
+	if in.Spec.PublicKeyField != "" {
+		return in.Spec.PublicKeyField
+	}
+	return "ssh-publickey"
 }
 
 func (in *SSHKeyPair) GetStatus() SecretStatus {

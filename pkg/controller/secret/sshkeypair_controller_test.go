@@ -20,6 +20,11 @@ import (
 	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
+const (
+	TestSecretFieldPrivateKey = "sshPrivateKey"
+	TestSecretFieldPublicKey  = "sshPublicKey"
+)
+
 // newSSHKeyPairTestCR returns a SSHKeyPair custom resource. If name is set to "", a uuid will be generated
 func newSSHKeyPairTestCR(sshSpec v1alpha1.SSHKeyPairSpec, name string) *v1alpha1.SSHKeyPair {
 	if name == "" {
@@ -60,8 +65,8 @@ func verifySSHSecretFromCR(t *testing.T, in *v1alpha1.SSHKeyPair, out *corev1.Se
 		t.Error("generated secret not referenced in CR status")
 	}
 
-	publicKey := out.Data[secret.SecretFieldPublicKey]
-	privateKey := out.Data[secret.SecretFieldPrivateKey]
+	publicKey := out.Data[in.GetPublicKeyField()]
+	privateKey := out.Data[in.GetPrivateKeyField()]
 
 	// check if keys have valid length
 	if len(privateKey) == 0 || len(publicKey) == 0 {
@@ -149,8 +154,8 @@ func TestControllerRegenerateSSHSecret(t *testing.T) {
 		Namespace: in.Namespace}, out))
 	verifySSHSecretFromCR(t, in, out)
 
-	oldPrivateKey := string(out.Data[secret.SecretFieldPrivateKey])
-	oldPublicKey := string(out.Data[secret.SecretFieldPublicKey])
+	oldPrivateKey := string(out.Data[secret.DefaultSecretFieldPrivateKey])
+	oldPublicKey := string(out.Data[secret.DefaultSecretFieldPublicKey])
 
 	in.Spec.Length = "35"
 
@@ -161,8 +166,8 @@ func TestControllerRegenerateSSHSecret(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, outNew))
 
-	newPrivateKey := string(outNew.Data[secret.SecretFieldPrivateKey])
-	newPublicKey := string(outNew.Data[secret.SecretFieldPublicKey])
+	newPrivateKey := string(outNew.Data[secret.DefaultSecretFieldPrivateKey])
+	newPublicKey := string(outNew.Data[secret.DefaultSecretFieldPublicKey])
 
 	if oldPrivateKey == newPrivateKey {
 		t.Errorf("secret has not been updated")
@@ -191,8 +196,8 @@ func TestControllerDoNotRegenerateSecret(t *testing.T) {
 		Namespace: in.Namespace}, out))
 	verifySSHSecretFromCR(t, in, out)
 
-	oldPrivateKey := string(out.Data[secret.SecretFieldPrivateKey])
-	oldPublicKey := string(out.Data[secret.SecretFieldPublicKey])
+	oldPrivateKey := string(out.Data[secret.DefaultSecretFieldPrivateKey])
+	oldPublicKey := string(out.Data[secret.DefaultSecretFieldPublicKey])
 
 	in.Spec.Length = "35"
 
@@ -203,8 +208,8 @@ func TestControllerDoNotRegenerateSecret(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, outNew))
 
-	newPrivateKey := string(outNew.Data[secret.SecretFieldPrivateKey])
-	newPublicKey := string(outNew.Data[secret.SecretFieldPublicKey])
+	newPrivateKey := string(outNew.Data[secret.DefaultSecretFieldPrivateKey])
+	newPublicKey := string(outNew.Data[secret.DefaultSecretFieldPublicKey])
 
 	if oldPrivateKey != newPrivateKey {
 		t.Errorf("secret has been updated")
@@ -233,10 +238,10 @@ func TestControllerDoNotRegenerateSSHSecretFixMissingPublicKey(t *testing.T) {
 		Namespace: in.Namespace}, out))
 	verifySSHSecretFromCR(t, in, out)
 
-	oldPrivateKey := string(out.Data[secret.SecretFieldPrivateKey])
-	oldPublicKey := string(out.Data[secret.SecretFieldPublicKey])
+	oldPrivateKey := string(out.Data[secret.DefaultSecretFieldPrivateKey])
+	oldPublicKey := string(out.Data[secret.DefaultSecretFieldPublicKey])
 
-	out.Data[secret.SecretFieldPublicKey] = []byte{}
+	out.Data[secret.DefaultSecretFieldPublicKey] = []byte{}
 
 	require.NoError(t, mgr.GetClient().Update(context.TODO(), out))
 
@@ -249,8 +254,8 @@ func TestControllerDoNotRegenerateSSHSecretFixMissingPublicKey(t *testing.T) {
 		Name:      in.Name,
 		Namespace: in.Namespace}, outNew))
 
-	newPrivateKey := string(outNew.Data[secret.SecretFieldPrivateKey])
-	newPublicKey := string(outNew.Data[secret.SecretFieldPublicKey])
+	newPrivateKey := string(outNew.Data[secret.DefaultSecretFieldPrivateKey])
+	newPublicKey := string(outNew.Data[secret.DefaultSecretFieldPublicKey])
 
 	if oldPrivateKey != newPrivateKey {
 		t.Errorf("secret has been updated")
@@ -264,11 +269,13 @@ func TestControllerDoNotRegenerateSSHSecretFixMissingPublicKey(t *testing.T) {
 func TestControllerRegeneratePublicKey(t *testing.T) {
 	data := make(map[string][]byte)
 	var log logr.Logger
-	err := secret.GenerateSSHKeypairData(log, "40", true, data)
+	err := secret.GenerateSSHKeypairData(log, "40", TestSecretFieldPrivateKey, TestSecretFieldPublicKey, true, data)
 	require.NoError(t, err)
 	testSpec := v1alpha1.SSHKeyPairSpec{
 		Length:          "40",
-		PrivateKey:      string(data[secret.SecretFieldPrivateKey]),
+		PrivateKey:      string(data[TestSecretFieldPrivateKey]),
+		PrivateKeyField: TestSecretFieldPrivateKey,
+		PublicKeyField:  TestSecretFieldPublicKey,
 		Type:            string(corev1.SecretTypeOpaque),
 		Data:            map[string]string{},
 		ForceRegenerate: true,
@@ -284,9 +291,9 @@ func TestControllerRegeneratePublicKey(t *testing.T) {
 		Namespace: in.Namespace}, out))
 	verifySSHSecretFromCR(t, in, out)
 
-	privateKey := string(out.Data[secret.SecretFieldPrivateKey])
+	privateKey := string(out.Data[TestSecretFieldPrivateKey])
 
-	if privateKey != string(data[secret.SecretFieldPrivateKey]) {
+	if privateKey != string(data[TestSecretFieldPrivateKey]) {
 		t.Errorf("Private key was regenerated")
 	}
 }
