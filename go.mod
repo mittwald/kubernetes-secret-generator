@@ -1,6 +1,6 @@
 module github.com/mittwald/kubernetes-secret-generator
 
-go 1.16
+go 1.23
 
 require (
 	github.com/emicklei/go-restful v2.16.0+incompatible // indirect
