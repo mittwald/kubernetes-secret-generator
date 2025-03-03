@@ -163,8 +163,8 @@ func setValuesForFields(fields []v1alpha1.Field, regenerate bool, values map[str
 			}
 			randomString, randErr := secret.GenerateRandomString(fieldLength, encoding, isByteLength)
 			if randErr != nil {
-				reqLogger.Error(err, "could not generate new random string")
-				return err
+				reqLogger.Error(randErr, "could not generate new random string")
+				return randErr
 			}
 			values[field.FieldName] = randomString
 		}
