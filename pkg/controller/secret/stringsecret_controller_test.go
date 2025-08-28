@@ -250,10 +250,11 @@ func TestRegenerateSecretsMultipleFields(t *testing.T) {
 }
 
 func TestDoNotTouchOtherSecrets(t *testing.T) {
+	secretName := "testsec-" + uuid.New().String()
 	secret := &corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      testSecretName,
+			Name:      secretName,
 			Namespace: "default",
 			Labels: map[string]string{
 				labelSecretGeneratorTest: "yes",
@@ -278,7 +279,7 @@ func TestDoNotTouchOtherSecrets(t *testing.T) {
 		},
 		ForceRegenerate: false,
 	}
-	in := newStringSecretTestCR(testSpec, testSecretName)
+	in := newStringSecretTestCR(testSpec, secretName)
 	require.NoError(t, mgr.GetClient().Create(context.TODO(), in))
 
 	doReconcileStringSecretController(t, in, false)

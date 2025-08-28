@@ -1,6 +1,6 @@
 module github.com/mittwald/kubernetes-secret-generator
 
-go 1.23
+go 1.25
 
 require (
 	github.com/go-logr/logr v0.1.0
