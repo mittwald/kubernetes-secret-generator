@@ -17,8 +17,6 @@ spec:
         - name: kubernetes-secret-generator
           # Replace this with the built image name
           image: quay.io/mittwald/kubernetes-secret-generator:latest
-          command:
-            - kubernetes-secret-generator
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
