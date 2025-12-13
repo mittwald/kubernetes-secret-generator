@@ -21,6 +21,7 @@ type StringSecretSpec struct {
 
 type Field struct {
 	FieldName string `json:"fieldName,omitempty"`
+	Type      string `json:"type,omitempty"`
 	Encoding  string `json:"encoding,omitempty"`
 	Length    string `json:"length,omitempty"`
 }
