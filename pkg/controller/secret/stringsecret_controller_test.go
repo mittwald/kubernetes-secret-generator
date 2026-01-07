@@ -6,17 +6,16 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/secretgenerator/v1alpha1"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd/stringsecret"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/mittwald/kubernetes-secret-generator/pkg/apis/secretgenerator/v1alpha1"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/crd/stringsecret"
-	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
 const testSecretName = "testsec123"

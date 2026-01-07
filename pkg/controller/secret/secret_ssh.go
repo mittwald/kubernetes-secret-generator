@@ -16,8 +16,8 @@ import (
 )
 
 const (
-       DefaultSecretFieldPublicKey  = "ssh-publickey"
-       DefaultSecretFieldPrivateKey = "ssh-privatekey"
+	DefaultSecretFieldPublicKey  = "ssh-publickey"
+	DefaultSecretFieldPrivateKey = "ssh-privatekey"
 )
 
 type SSHKeypairGenerator struct {

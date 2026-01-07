@@ -2,15 +2,15 @@ package secret_test
 
 import (
 	"context"
+	"strings"
+	"testing"
+
 	"github.com/imdario/mergo"
+	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"testing"
-
-	"github.com/mittwald/kubernetes-secret-generator/pkg/controller/secret"
 )
 
 func newBasicAuthTestSecret(extraAnnotations map[string]string) *corev1.Secret {
