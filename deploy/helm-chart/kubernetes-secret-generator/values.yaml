@@ -101,3 +101,10 @@ readinessProbe:
   timeoutSeconds: 1
   successThreshold: 1
   failureThreshold: 3
+
+startupProbe:
+  enabled: true
+  failureThreshold: 5
+  periodSeconds: 3
+  successThreshold: 1
+  timeoutSeconds: 1

@@ -35,6 +35,15 @@ spec:
               port: healthcheck
             initialDelaySeconds: 6
             periodSeconds: 3
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: healthcheck
+              scheme: HTTP
+            failureThreshold: 5
+            periodSeconds: 3
+            successThreshold: 1
+            timeoutSeconds: 1
           env:
             - name: WATCH_NAMESPACE
               valueFrom:

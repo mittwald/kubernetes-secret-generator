@@ -62,7 +62,17 @@ spec:
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
             successThreshold: {{ .Values.readinessProbe.successThreshold }}
             failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
-          {{- end }}              
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: healthcheck
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          {{- end }}
           env:
             - name: WATCH_NAMESPACE
               value: {{ template "kubernetes-secret-generator.watchNamespace" . }}
