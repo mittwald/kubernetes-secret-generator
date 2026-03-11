@@ -56,7 +56,7 @@ Afterwards, deploy the operator using:
     ```shellsession
     $ helm upgrade --install kubernetes-secret-generator mittwald/kubernetes-secret-generator
     ```
- 
+
 ### Manually
 
 If you don't want to use Helm (why wouldn't you?), the required .yaml files can also be applied manually using `kubectl apply`:
@@ -73,7 +73,7 @@ $ make uninstall
 
 ## Usage
 
-This operator is capable of generating secure random strings and ssh keypair secrets. 
+This operator is capable of generating secure random strings and ssh keypair secrets.
 
 It supports two ways of secret generation, annotation-based and cr-based.
 
@@ -83,11 +83,11 @@ For annotation based generation, the type of secret to be generated can be speci
 This annotation can be added to any Kubernetes secret object in the operators `watchNamespace`.
 
 The encoding of the secret can be specified by the `secret-generator.v1.mittwald.de/encoding` annotation.
-Available encodings are `base64`, `base64url`, `base32`, `hex` and `raw`, with `raw` returning the unencoded byte sequence
+Available encodings are `base64`, `base64url`, `base32`, `hex`, `ascii`, and `raw`, with `raw` returning the unencoded byte sequence
 that was generated. `base64` will be used, if the annotation was not used.
 
 The length of the generated secret can be specified by the `secret-generator.v1.mittwald.de/length` annotation.
-By default, this length refers to the length of the generated string, and not the length of the byte sequence encoded by it. 
+By default, this length refers to the length of the generated string, and not the length of the byte sequence encoded by it.
 The suffix `B` or `b` can be used to indicate that the provided value should refer to the encoded byte sequence instead.
 
 ### Secure Random Strings
@@ -97,7 +97,7 @@ reconciliation loop and its value will be set to `string`.
 
 To actually generate random string secrets, the `secret-generator.v1.mittwald.de/autogenerate` annotation is required as well.
 The value of the annotation can be a field name (or comma separated list of field names) within the secret;
-the SecretGeneratorController will pick up this annotation and add a field [or fields] 
+the SecretGeneratorController will pick up this annotation and add a field [or fields]
 (`password` in the example below) to the secret with a randomly generated string value.
 
 ```yaml
@@ -204,7 +204,7 @@ All crs support the field `spec.type` which can be used to define the kubernetes
 ### Secure Random Strings via StringSecret-CR
 
 A `StringSecret` resource can be used to generate secure random strings similar to the ones offered by the annotation approach.
-Desired Fields to be randomly generated can be supplied via the `spec.fields` property, which can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same secret object. 
+Desired Fields to be randomly generated can be supplied via the `spec.fields` property, which can be used to specify a list of fields with individual encoding and length values, e.g. a hex-encoded string of length 15 and a base64-encoded string of length 40 can be defined in the same secret object.
 The `spec.data` property can be used to specify arbitrary data entries the generated secret's `data` property should be populated with.
 Finally, the `spec.forceRegenerate` property can be used to control regeneration of secret fields.
 
@@ -270,13 +270,38 @@ spec:
     example: "data"
 ```
 
+### Arbitrary Templated Secrets
+
+A `TemplateSecret` resource can be used to generate arbitrary secret content
+using go template. Supported properties are `spec.data`, `spec.fields`,
+and `spec.forceRegenerate`. similar to `StringSecret`. `spec.data` are a set of
+properties that are go templates that pull from the `spec.fields` as insertable
+values.
+
+```yaml
+apiVersion: secretgenerator.mittwald.de/v1alpha1
+kind: TemplateSecret
+metadata:
+  name: "example-template"
+  namespace: "default"
+spec:
+  forceRegenerate: false
+  data:
+    mytemplate: |
+      Hello {{ .test }}
+  fields:
+    - fieldName: "test"
+      encoding: "ascii"
+      length: "15"
+```
+
 ## Operational tasks
 
 -   Regenerate all automatically generated secrets:
     ```
     $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=true
     ```
-    
+
 -   Regenerate only certain fields, in case the secret is of the `password` type:
     ```
     $ kubectl annotate secrets --all secret-generator.v1.mittwald.de/regenerate=password1,password2

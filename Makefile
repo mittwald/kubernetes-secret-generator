@@ -1,6 +1,6 @@
 SHELL=/usr/bin/env bash -o pipefail
 NAMESPACE=default
-KUBECONFIG=/tmp/kubeconfig
+export KUBECONFIG=/tmp/kubeconfig
 VERSION ?= latest
 IMAGE_TAG_BASE ?= quay.io/mittwald/kubernetes-secret-generator
 IMG ?= secret-generator:${VERSION}
@@ -15,6 +15,7 @@ install: ## Install all resources (RBAC and Operator)
 	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
 	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
 	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
+	kubectl apply -f deploy/crds/secretgenerator.mittwald.de_templatesecrets_crd.yaml
 	@echo ....... Applying Operator .......
 	kubectl apply -f deploy/operator.yaml -n ${NAMESPACE}
 
@@ -60,7 +61,7 @@ fmt:
 .PHONY: kind
 kind: deletekind## Create a kind cluster to test against
 	kind create cluster --name kind-k8s-secret-generator
-	kind get kubeconfig --name kind-k8s-secret-generator | tee ${KUBECONFIG}
+	kind get kubeconfig --name kind-k8s-secret-generator > ${KUBECONFIG}
 
 
 .PHONY: deletekind
@@ -72,9 +73,10 @@ crd: kind
 	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_basicauths_crd.yaml
 	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_sshkeypairs_crd.yaml
 	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_stringsecrets_crd.yaml
+	kubectl --context kind-kind-k8s-secret-generator apply -f deploy/crds/secretgenerator.mittwald.de_templatesecrets_crd.yaml
 
 .PHONY: build
 build:
 	# NOTE: This relies on the deprected operator-sdk build command (last present in 0.19)
-	operator-sdk build --go-build-args "-ldflags -X=version.Version=${SECRET_OPERATOR_VERSION}" ${DOCKER_IMAGE}
+	operator-sdk build --go-build-args "-ldflags -X=version.Version=${VERSION}" ${IMG}
 	@exit $(.SHELLSTATUS)

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/imdario/mergo"
 	"github.com/spf13/viper"
@@ -415,6 +417,61 @@ func TestStringLengthFromAnnotation(t *testing.T) {
 	verifyStringSecret(t, in, out, true)
 	if len(out.Data["testfield"]) != 42 {
 		t.Error("mismatch between secret length and annotation")
+	}
+}
+
+func validateAsciiString(b []byte, expectLen int) error {
+	if len(b) != expectLen {
+		return fmt.Errorf("length of string %d != expected length %d", len(b), expectLen)
+	}
+	for _, byt := range b {
+		if !unicode.IsPrint(rune(byt)) {
+			return fmt.Errorf("generated string contains invalid ascii %d (non-print)", byt)
+		}
+		if rune(byt) > unicode.MaxASCII {
+			return fmt.Errorf("generated string contains invalid ascii %d (outside ascii)", byt)
+		}
+	}
+	return nil
+}
+
+func TestGeneratedSecretAscii(t *testing.T) {
+	tests := []struct {
+		name      string
+		length    int
+		encoding  string
+		expectErr bool
+		validate  func([]byte, int) error
+	}{
+		{"ascii len 20", 20, "ascii", false, validateAsciiString},
+		{"ascii len 100", 100, "ascii", false, validateAsciiString},
+		{"ascii len 7", 7, "ascii", false, validateAsciiString},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			for range 100 {
+				pwd, err := secret.GenerateRandomString(tt.length, tt.encoding, false)
+				if err == nil && tt.expectErr {
+					t.Error("expected error but did not get one")
+				}
+				if err != nil && !tt.expectErr {
+					t.Errorf("unexpected error: %v", err)
+					return
+				}
+				if err != nil {
+					return
+				}
+
+				err = tt.validate(pwd, tt.length)
+				if err != nil {
+					t.Errorf("error while validating %q: %v", string(pwd), err)
+					return
+				}
+			}
+		})
 	}
 }
 

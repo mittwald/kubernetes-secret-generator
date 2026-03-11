@@ -58,6 +58,11 @@ func (pg StringGenerator) generateRandomSecret(conf secretConfig) error {
 	return nil
 }
 
+const (
+	PrintableStart = 32
+	PrintableEnd   = 126
+)
+
 // GenerateRandomString generates a random string of given length and with given encoding.
 // If lenBytes is true, resultring string will not be trimmed
 func GenerateRandomString(length int, encoding string, lenBytes bool) ([]byte, error) {
@@ -77,6 +82,11 @@ func GenerateRandomString(length int, encoding string, lenBytes bool) ([]byte, e
 		encodedString = base32.StdEncoding.EncodeToString(b)
 	case "hex":
 		encodedString = hex.EncodeToString(b)
+	case "ascii":
+		for i, strByte := range b {
+			b[i] = PrintableStart + strByte%(PrintableEnd-PrintableStart)
+		}
+		encodedString = string(b)
 	default:
 		encodedString = base64.StdEncoding.EncodeToString(b)
 	}
